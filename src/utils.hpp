@@ -264,3 +264,4 @@ public:
 using namespace std;
 string uint64_to_kmer(uint64_t kmer, uint32_t k);
 
+std::string string_format(const char *fmt, ...);

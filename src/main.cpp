@@ -151,6 +151,8 @@ int walk_main(int argc, char *argv[])
     a.add<string>("kFileName", 'k', "output file path (without extension)", false, "");
     a.add<string>("okFileName", 'l', "output file path (without extension)", true);
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
+    a.add("passSpecialCharactors", '\0', "don't store bad brc which has unknown charactors");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -162,7 +164,9 @@ int walk_main(int argc, char *argv[])
             a.get<string>("kFileName"),
             a.get<string>("okFileName"),
             a.rest()[0],
-            a.get<string>("outputFileName")
+            a.get<string>("outputFileName"),
+            a.get<int>("nThreads"),
+            a.exist("passSpecialCharactors")
         );
     }
 }

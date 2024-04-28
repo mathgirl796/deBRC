@@ -416,3 +416,23 @@ unsigned char nst_nt4_table[256] = {
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
+
+std::string string_format(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    // 第一次调用 vsnprintf 获取格式化字符串的长度
+    int len = vsnprintf(nullptr, 0, fmt, args);
+    va_end(args);
+
+    // 分配足够的内存来存储格式化的字符串
+    char *buffer = new char[len + 1];
+
+    va_start(args, fmt);
+    // 第二次调用 vsnprintf 将格式化字符串写入缓冲区
+    vsnprintf(buffer, len + 1, fmt, args);
+    va_end(args);
+
+    std::string result(buffer);
+    delete[] buffer;
+    return result;
+}
