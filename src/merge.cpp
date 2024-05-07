@@ -19,7 +19,8 @@ using namespace std;
  * 打印调试信息可以用err_func_printf
  * 打开文件后应用setvbuf调整文件缓冲区大小，CommonFileBufSize即可(在utils.hpp中定义)
 */
-int merge_core(const std::vector<std::string> &inputFiles, const std::string &outputFileName, const bool &distinct, uint32_t maxRamGB) {
+int merge_core(const std::vector<std::string> &inputFiles, const std::string &outputFileName, 
+    const bool &distinct, uint32_t maxRamGB) {
     // 初始化优先级队列
     __gnu_parallel::_LoserTree<false, uint64_t, std::less<>> minHeap(inputFiles.size(), std::less<>());
     uint64_t minHeapBuf[inputFiles.size()];
@@ -63,15 +64,14 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
 
     // 使用败者树进行归并
     uint64_t closedFileNum = 0;
+    bool isFirstKmer = true;
+    uint64_t lastKmer = 0;
     while (closedFileNum < inputFiles.size()) {
         // 弹出堆顶元素（最小值）
         int fileIndex = minHeap.__get_min_source();
         uint64_t minValue = minHeapBuf[fileIndex];
 
-        // 写入最小值到输出文件
-        err_fwrite(&minValue, sizeof(uint64_t), 1, outputFile);
-
-        // 从对应文件中读取下一个元素
+        // 从对应文件中读取下一个元素到败者树中
         uint64_t kmer;
         size_t ret = fread(&kmer, sizeof(uint64_t), 1, files[fileIndex]);
         if (ret == 1) {
@@ -83,10 +83,109 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
             err_fclose(files[fileIndex]);
             closedFileNum += 1;
         }
+
+        if (isFirstKmer) {
+            isFirstKmer = false;
+        }
+        else if (minValue == lastKmer) {
+            kmerCount -= 1;
+            continue;
+        }
+
+        // 写入最小值到输出文件
+        err_fwrite(&minValue, sizeof(uint64_t), 1, outputFile);
+        lastKmer = minValue;
     }
+
+    // 写入去重后的kmer数
+    err_fseek(outputFile, sizeof(uint32_t), SEEK_SET);
+    err_fwrite(&kmerCount, sizeof(uint64_t), 1, outputFile);
 
     // 关闭输出文件
     err_fclose(outputFile);
 
+    return 0;
+}
+
+
+int compare_core(const std::string &refFileName, const std::string &tgtFileName, 
+    const std::string &outputFileName) {
+    FILE *refFile = xopen(refFileName.c_str(), "rb");
+    setvbuf(refFile, NULL, _IOFBF, CommonFileBufSize);
+    FILE *tgtFile = xopen(tgtFileName.c_str(), "rb");
+    setvbuf(tgtFile, NULL, _IOFBF, CommonFileBufSize);
+
+    uint32_t k = 0, tmpK = 0;
+    uint64_t refKmerNum = 0, tgtKmerNum = 0;
+    err_fread_noeof(&k, sizeof(uint32_t), 1, refFile);
+    err_fread_noeof(&refKmerNum, sizeof(uint64_t), 1, refFile);
+    err_fread_noeof(&tmpK, sizeof(uint32_t), 1, tgtFile);
+    err_fread_noeof(&tgtKmerNum, sizeof(uint64_t), 1, tgtFile);
+
+    if (k != tmpK) {
+        err_func_printf(__func__, "error: kmerLengths are not consistent!\n");
+        return 1;
+    }
+
+    // 打开输出文件，并暂时写入头部
+    string rmtFileName = outputFileName + ".rmt.smer";
+    string tmrFileName = outputFileName + ".tmr.smer";
+    FILE *rmtFile = xopen(rmtFileName.c_str(), "wb");
+    FILE *tmrFile = xopen(tmrFileName.c_str(), "wb");
+    setvbuf(rmtFile, NULL, _IOFBF, CommonFileBufSize);
+    setvbuf(tmrFile, NULL, _IOFBF, CommonFileBufSize);
+    err_fwrite(&k, sizeof(uint32_t), 1, rmtFile);
+    err_fwrite(&refKmerNum, sizeof(uint64_t), 1, rmtFile);
+    err_fwrite(&k, sizeof(uint32_t), 1, tmrFile);
+    err_fwrite(&tgtKmerNum, sizeof(uint64_t), 1, tmrFile);
+    
+
+    // 两个输入文件先各读入一个kmer
+    uint64_t rKmer = 0, tKmer = 0;
+    uint64_t rmtKmerNum = 0, tmrKmerNum = 0;
+    size_t rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
+    size_t tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
+
+    while (rRet != 0 && tRet != 0) {
+        if (rKmer < tKmer) {
+            err_fwrite(&rKmer, sizeof(uint64_t), 1, rmtFile);
+            rmtKmerNum += 1;
+            rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
+        }
+        else if (rKmer == tKmer) {
+            rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
+            tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
+        }
+        else {
+            err_fwrite(&tKmer, sizeof(uint64_t), 1, tmrFile);
+            tmrKmerNum += 1;
+            tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
+        }
+    }
+
+    while (rRet != 0) {
+        err_fwrite(&rKmer, sizeof(uint64_t), 1, rmtFile);
+        rmtKmerNum += 1;
+        rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
+    }
+    err_fseek(rmtFile, sizeof(uint32_t), SEEK_SET);
+    err_fwrite(&rmtKmerNum, sizeof(uint64_t), 1, rmtFile);
+
+    while (tRet != 0) {
+        err_fwrite(&tKmer, sizeof(uint64_t), 1, tmrFile);
+        tmrKmerNum += 1;
+        tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
+    }
+    err_fseek(tmrFile, sizeof(uint32_t), SEEK_SET);
+    err_fwrite(&tmrKmerNum, sizeof(uint64_t), 1, tmrFile);
+
+    err_fprintf(stdout, "k\trefKmerNum\ttgtKmerNum\trmtKmerNum\ttmrKmerNum\n");
+    err_fprintf(stdout, "%u\t%lu\t%lu\t%lu\t%lu\n", k, refKmerNum, tgtKmerNum, rmtKmerNum, tmrKmerNum);
+
+
+    err_fclose(refFile);
+    err_fclose(tgtFile);
+    err_fclose(rmtFile);
+    err_fclose(tmrFile);
     return 0;
 }

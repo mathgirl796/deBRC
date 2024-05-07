@@ -9,10 +9,10 @@
 #include "kmc.hpp"
 #include "convert.hpp"
 #include "sort.hpp"
+#include "merge.hpp"
 #include "others.hpp"
 #include "split.hpp"
 #include "walk.hpp"
-#include "extract.hpp"
 
 using namespace std;
 
@@ -57,6 +57,37 @@ int convert_main(int argc, char *argv[])
     }
 }
 
+int merge_main(int argc, char *argv[])
+{
+    cmdline::parser a;
+    a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.footer("inputFileNames");
+    a.parse_check(argc, argv);
+    if (a.rest().size() < 1) {
+        cerr << a.usage();
+        return 1;
+    }
+    else {
+        return merge_core(
+            a.rest(), a.get<string>("outputFileName"),
+            true, 1
+        );
+    }
+}
+
+int compare_main(int argc, char *argv[])
+{
+    cmdline::parser a;
+    a.add<string>("refFileName", 'r', "reference .smer file", true);
+    a.add<string>("tgtFileName", 't', "target .smer file", true);
+    a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.parse_check(argc, argv);
+    return compare_core(
+        a.get<string>("refFileName"), a.get<string>("tgtFileName"),
+        a.get<string>("outputFileName")
+    );
+}
+
 int sort_main(int argc, char *argv[])
 {
     cmdline::parser a;
@@ -74,25 +105,6 @@ int sort_main(int argc, char *argv[])
         return sort_core(
             a.rest()[0], a.get<string>("outputFileName"),
             a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
-        );
-    }
-}
-
-int extract_main(int argc, char *argv[])
-{
-    cmdline::parser a;
-    a.add<int>("kmerLen", 'k', "k-mer length", false, 25, cmdline::range(2, 32));
-    a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
-    a.footer("inputFileName");
-    a.parse_check(argc, argv);
-    if (a.rest().size() < 1) {
-        cerr << a.usage();
-        return 1;
-    }
-    else {
-        return extract_core(
-            a.rest()[0], a.get<string>("outputFileName"),
-            a.get<int>("kmerLen")
         );
     }
 }
@@ -181,6 +193,8 @@ int main(int argc, char *argv[])
     COMMAND_HANDLER h;
     h.add_function("kmc", "count kmers in one/several fasta files", kmc_main);
     h.add_function("convert", "convert file format from .kmc_* to .mer", convert_main);
+    h.add_function("merge", "merge consistent .smer files, duplicate values will be removed", merge_main);
+    h.add_function("compare", "compare two .smer files", compare_main);
     h.add_function("sort", "sort file format from .mer to .smer", sort_main);
     // h.add_function("extract", "proper version of kmc&convert", extract_main);
     h.add_function("view", "view .mer or .smer file", view_main);
