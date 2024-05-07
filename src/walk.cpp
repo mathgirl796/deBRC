@@ -5,6 +5,8 @@
 #include "FastaReader/FastaReader.hpp"
 #include "klib/kthread.hpp"
 
+// TODO: 用kt_pipeline改写成读算写三阶段，这样就可以处理大输入文件了
+
 extern unsigned char nst_nt4_table[256];
 
 enum class MerType {x, i, o};
@@ -137,7 +139,9 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
         perror("inputed kFile is not compatable with okFile");
     }
 
-    string fullOutputFileName = outputFileName + ".brc";
+    string fullOutputFileName = outputFileName;
+    if (passSpecialCharactors) fullOutputFileName += ".passN"; // 若不保留未知字符导致的xBrc，则加后缀注明
+    fullOutputFileName += ".brc";
     FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
 
