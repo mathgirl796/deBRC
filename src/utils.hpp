@@ -265,3 +265,28 @@ using namespace std;
 string uint64_to_kmer(uint64_t kmer, uint32_t k);
 
 std::string string_format(const char *fmt, ...);
+
+
+#ifndef KSTRING_T
+#define KSTRING_T kstring_t
+typedef struct __kstring_t {
+	size_t l, m;
+	char *s;
+} kstring_t;
+#endif
+#define type_t gzFile
+#define __read gzread
+#define __bufsize 16384
+typedef struct __kstream_t {				\
+	unsigned char *buf;						\
+	int begin, end, is_eof;					\
+	type_t f;								\
+} kstream_t;
+typedef struct {							\
+	kstring_t name, comment, seq, qual;		\
+	int last_char;							\
+	kstream_t *f;							\
+} kseq_t;
+kseq_t *kseq_init(type_t fd);
+void kseq_destroy(kseq_t *ks);
+int kseq_read(kseq_t *seq);

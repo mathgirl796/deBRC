@@ -118,7 +118,6 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
     bool passSpecialCharactors) {
 
-    FastaReader fr(faFileName);
     uint32_t ok = 0;
     uint64_t okmerNum = 0;
 
@@ -147,12 +146,15 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     walkData.k = k;
     walkData.outputList = vector<string>();
     walkData.passSpecialCharactors = passSpecialCharactors;
-    while (fr.hasNextSequence()) {
-        fr.readSequence();
-        walkData.seqList.push_back(fr.Sequence());
-        walkData.idList.push_back(fr.Id());
+    gzFile fp = xzopen(faFileName.c_str(), "r");
+    kseq_t *seqs = kseq_init(fp);
+    while (kseq_read(seqs) >= 0) {
+        // fprintf(stderr, "%s | %s\n", seqs->name.s, seqs->seq.s);
+        walkData.seqList.push_back(string(seqs->seq.s));
+        walkData.idList.push_back(string(seqs->name.s));
         walkData.outputList.push_back("");
     }
+    gzclose(fp);
 
     // 加载okmer到内存
     err_func_printf(__func__, "loading %s\n", okFileName.c_str()); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
