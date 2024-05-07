@@ -1,7 +1,13 @@
+首先想办法在自己的环境中编译一个KMC3，因为官网的有时候用不了
+```
+mkdir lib
+mv path/to/libkmc_core.a lib/
+make
+```
+
+
 ```
 #!/bin/bash
-
-make
 
 # 创建临时文件夹，防止多个任务的临时文件冲突
 mkdir -p tmp/test
