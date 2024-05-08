@@ -10,6 +10,7 @@ struct CheckData{
     int taskNum;
     uint64_t taskQuan;
     uint64_t lastTaskQuan;
+    bool check_dup;
 };
 
 void *multi_check(void *data) {
@@ -36,6 +37,10 @@ void *multi_check(void *data) {
             err_func_printf(__func__, "tid:%d, error: decrease at [%lu]\n", d->taskID, i + d->taskID * d->taskQuan);
             exit(1);
         }
+        if (d->check_dup && kmer == last_kmer) {
+            err_func_printf(__func__, "tid:%d, error: duplicate at [%lu]\n", d->taskID, i + d->taskID * d->taskQuan);
+            exit(1);
+        }
         last_kmer = kmer;
     }
     err_func_printf(__func__, "tid:%d, passed check from %lu to %lu\n", d->taskID, d->taskID * d->taskQuan, d->taskID * d->taskQuan + kmerCount);
@@ -43,7 +48,7 @@ void *multi_check(void *data) {
     return NULL;
 }
 
-int check_core(const std::string &inputFileName, uint32_t nThreads) {
+int check_core(const std::string &inputFileName, uint32_t nThreads, bool check_dup) {
     FILE* inputFile = xopen(inputFileName.c_str(), "rb");
     uint32_t kmerLength;
     uint64_t kmerCount;
@@ -65,12 +70,13 @@ int check_core(const std::string &inputFileName, uint32_t nThreads) {
         data_blocks[i].taskNum = taskNum;
         data_blocks[i].taskQuan = taskQuan;
         data_blocks[i].lastTaskQuan = kmerCount - (taskNum - 1) * taskQuan;
+        data_blocks[i].check_dup = check_dup;
         pthread_create(&tid[i], NULL, multi_check, &data_blocks[i]);
     }
     for (uint32_t i = 0; i < nThreads; ++i) {
         pthread_join(tid[i], NULL);
     }
-    err_func_printf(__func__, "all pass\n");
+    err_func_printf(__func__, "all pass (check_dup: %d)\n", (int)check_dup);
     return 0;
 }
 
@@ -91,5 +97,6 @@ int view_core(const std::string &inputFileName) {
         err_fread_noeof(&kmer, sizeof(uint64_t), 1, inputFile);
         std::cerr << uint64_to_kmer(kmer, kmerLength) << "\t";
     }
+    std::cerr << std::endl;
     return 0;
 }

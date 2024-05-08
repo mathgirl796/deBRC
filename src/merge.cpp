@@ -87,7 +87,7 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
         if (isFirstKmer) {
             isFirstKmer = false;
         }
-        else if (minValue == lastKmer) {
+        else if (distinct && minValue == lastKmer) { // 去重
             kmerCount -= 1;
             continue;
         }
@@ -97,9 +97,11 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
         lastKmer = minValue;
     }
 
-    // 写入去重后的kmer数
-    err_fseek(outputFile, sizeof(uint32_t), SEEK_SET);
-    err_fwrite(&kmerCount, sizeof(uint64_t), 1, outputFile);
+    if (distinct) {
+        // 写入去重后的kmer数
+        err_fseek(outputFile, sizeof(uint32_t), SEEK_SET);
+        err_fwrite(&kmerCount, sizeof(uint64_t), 1, outputFile);
+    }
 
     // 关闭输出文件
     err_fclose(outputFile);

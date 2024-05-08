@@ -21,7 +21,7 @@ struct SortData {
     vector<string> tmpFileNames;
 };
 
-int compare_uint64 (const void *ptr_a, const void *ptr_b) {
+static int compare_uint64 (const void *ptr_a, const void *ptr_b) {
     uint64_t a = *(uint64_t *)ptr_a, b = *(uint64_t *)ptr_b;
     if (a < b) return -1;
     else if (a == b) return 0;
@@ -63,7 +63,7 @@ void ktf_sort(void* data, long i, int tid) {
  * 然后用kthread库中的kt_for创建线程池，对这些块进行排序
  * 最后创建输出文件，写入头部，进而用堆排序将这些块归并，写入数据部分
 */
-int sort_core(const std::string &inputFileName, const std::string &outputFileName, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads) {
+int sort_core(const std::string &inputFileName, const std::string &outputFileName, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads, bool distinct) {
     // 打开待排序文件
     FILE* inputFile = xopen(inputFileName.c_str(), "r");
     uint32_t kmerLength;
@@ -85,7 +85,7 @@ int sort_core(const std::string &inputFileName, const std::string &outputFileNam
     data.totalTaskNum = (data.kmerCount - 1) / data.singleBufferKmerCount + 1;
     err_func_printf(__func__, "totalTaskNum:%lu\n", data.totalTaskNum);
     // 执行多线程排序，结果写入到临时文件中
-    err_func_printf(__func__, "sorting...\n");
+    err_func_printf(__func__, "sorting... (total %lu tasks)\n", data.totalTaskNum);
     kt_for(nThreads, ktf_sort, &data, data.totalTaskNum);
     err_func_printf(__func__, "done sorting\n");
     // 多路归并

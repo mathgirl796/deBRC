@@ -22,7 +22,7 @@ int kmc_main(int argc, char *argv[])
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<int>("kmerLen", 'k', "k-mer length", false, 25, cmdline::range(2, 32));
-    a.add<string>("tmpPath", 'w', "place to hold temp files", false, ".");
+    a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.footer("inputFileName");
     a.parse_check(argc, argv);
@@ -94,7 +94,8 @@ int sort_main(int argc, char *argv[])
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
-    a.add<string>("tmpPath", 'w', "place to hold temp files", false, ".");
+    a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
+    a.add("distinct", '\0', "delete duplicate kmers");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -104,7 +105,7 @@ int sort_main(int argc, char *argv[])
     else {
         return sort_core(
             a.rest()[0], a.get<string>("outputFileName"),
-            a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
+            a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads"), a.exist("distinct")
         );
     }
 }
@@ -126,6 +127,7 @@ int view_main(int argc, char *argv[]) {
 int check_main(int argc, char *argv[]) {
     cmdline::parser a;
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
+    a.add("check_dup", 'd', "check duplicate rather than only decrease");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -133,7 +135,7 @@ int check_main(int argc, char *argv[]) {
         return 1;
     }
     else {
-        return check_core(a.rest()[0], a.get<int>("nThreads"));
+        return check_core(a.rest()[0], a.get<int>("nThreads"), a.exist("check_dup"));
     }
 }
 
@@ -142,6 +144,9 @@ int split_main(int argc, char *argv[])
     cmdline::parser a;
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add("ksmer", '\0', "need .k.smer");
+    a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
+    a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
+    a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -152,7 +157,7 @@ int split_main(int argc, char *argv[])
         return split_core(
             a.rest()[0],
             a.get<string>("outputFileName"),
-            a.exist("ksmer")
+            a.exist("ksmer"),a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
         );
     }
 }

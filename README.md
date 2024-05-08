@@ -29,8 +29,8 @@ bin/main sort -o test -r 16 -t 8 -w tmp/test test.mer
 # 这一步查找.smer文件中的多出kmer，生成文件test.o.smer，该文件的k将比输入文件小1。如果指定--kmer，还会输出一个test.k.smer，用于brc的恢复
 # 这一步预计的内存用量约等于.o.smer的大小，如果要求输出.k.smer的话还得把它的大小加上
 # 因为临时结果直接存在内存里
-# chm13只生成.o.smer内存消耗2.790329GB，用时3分多
-bin/main split -o test test.smer
+# chm13只生成.o.smer内存消耗5.520786GB，用时1分半。加上--ksmer还会生成.o.smer，消耗内存24.196552GB，用时15分钟多
+bin/main split -o test -r 16 -t 8 -w tmp/test test.smer
 
 # 这一步根据test.fa和test.o.smer，生成test.brc。目前仅支持fasta文件在自己所创建的索引上生成brc，不支持一个fasta在另一个fasta创建的索引上生成brc
 # 这一步的-t参数（线程数）建议设置为23，同时处理人的23个主要染色体
@@ -42,14 +42,25 @@ bin/main walk -k asdf -l test.o.smer -o test -t 8 test.fa.gz
 rm -rf /home/user/duanran/repo/deBRC/deBRC/experiment/tmp/chm13.draft_v1.1
 ```
 
-在chm13上的输出如下
+k=21，在chm13上的输出如下
 ```
--rw-rw-r--. 1 duanran duanran 107M May  7 16:00 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.brc
--rw-rw-r--. 1 duanran duanran 1.1M May  7 12:59 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.kmc_pre
--rw-rw-r--. 1 duanran duanran  14G May  7 12:59 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.kmc_suf
--rw-rw-r--. 1 duanran duanran  18G May  7 13:04 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.mer
--rw-rw-r--. 1 duanran duanran 473M May  7 13:15 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.o.smer
--rw-rw-r--. 1 duanran duanran 107M May  7 15:44 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.passN.brc
--rw-rw-r--. 1 duanran duanran  18G May  7 13:12 /home/user/duanran/repo/deBRC/deBRC/experiment/output/chm13.draft_v1.1.smer
+total 83G
+-rw-rw-r--. 1 duanran duanran 107M May  7 16:00 chm13.draft_v1.1.brc
+-rw-rw-r--. 1 duanran duanran 1.1M May  7 12:59 chm13.draft_v1.1.kmc_pre
+-rw-rw-r--. 1 duanran duanran  14G May  7 12:59 chm13.draft_v1.1.kmc_suf
+-rw-rw-r--. 1 duanran duanran  18G May  7 13:04 chm13.draft_v1.1.mer
+-rw-rw-r--. 1 duanran duanran  33G May  8 13:20 chm13.draft_v1.1.new.k.smer
+-rw-rw-r--. 1 duanran duanran 473M May  8 13:23 chm13.draft_v1.1.new.o.smer
+-rw-rw-r--. 1 duanran duanran 473M May  7 13:15 chm13.draft_v1.1.o.smer
+-rw-rw-r--. 1 duanran duanran 107M May  7 15:44 chm13.draft_v1.1.passN.brc
+-rw-rw-r--. 1 duanran duanran  18G May  7 13:12 chm13.draft_v1.1.smer
 ```
 其中，.brc和.passN.brc经过diff命令检查，完全一致
+
+k=21，在HG002.__maternal上的输出如下
+```
+-rw-rw-r--. 1 duanran duanran 107M May  8 14:02 /home/user/duanran/repo/deBRC/deBRC/experiment/k21/output/HG002.__maternal.brc
+-rw-rw-r--. 1 duanran duanran  33G May  8 13:47 /home/user/duanran/repo/deBRC/deBRC/experiment/k21/output/HG002.__maternal.k.smer
+-rw-rw-r--. 1 duanran duanran 473M May  8 13:47 /home/user/duanran/repo/deBRC/deBRC/experiment/k21/output/HG002.__maternal.o.smer
+-rw-rw-r--. 1 duanran duanran  18G May  8 08:36 /home/user/duanran/repo/deBRC/deBRC/experiment/k21/output/HG002.__maternal.smer
+```
