@@ -24,7 +24,7 @@ bin/main convert -o test test
 
 # 这一步把.mer文件进行排序，生成文件test.smer
 # 这一步内存似乎有点溢出，限制16G结果用了25.036301GB，用时9分多
-bin/main sort -o test -r 16 -t 8 test.mer
+bin/main sort -o test -r 16 -t 8 -w tmp/test test.mer
 
 # 这一步查找.smer文件中的多出kmer，生成文件test.o.smer，该文件的k将比输入文件小1。如果指定--kmer，还会输出一个test.k.smer，用于brc的恢复
 # 这一步预计的内存用量约等于.o.smer的大小，如果要求输出.k.smer的话还得把它的大小加上
