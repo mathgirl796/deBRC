@@ -57,10 +57,13 @@ void ktf_split(void* data, long i, int tid) {
     err_fwrite(&omerCount, sizeof(uint64_t), 1, omerFile);
     bool ksmer = d->ksmer;
     uint64_t lastLkmer = 0, lastRkmer = 0;
+    uint64_t rKmerMask = (~((uint64_t)0x3 << ((kp1 << 1) - 2)));
     for (uint64_t i = 0; i < bufferCount; ++i) {
         uint64_t kp1mer = kp1mers[i];
         uint64_t lkmer = kp1mer >> 2;
-        uint64_t rkmer = kp1mer & (~(0x3 << ((kp1 << 1) - 2)));
+        uint64_t rkmer = kp1mer & rKmerMask;
+        // fprintf(stderr, "%s\n%s\n%s\n", uint64_to_kmer(kp1mer, kp1).c_str(), uint64_to_kmer(lkmer, k).c_str(), uint64_to_kmer(rkmer, kp1).c_str());
+        // getchar();
         if (ksmer) {
             err_fwrite(&lkmer, sizeof(uint64_t), 1, merFile);
             err_fwrite(&rkmer, sizeof(uint64_t), 1, merFile);
@@ -193,10 +196,18 @@ int split_core_legacy(const std::string &inputFileName, const std::string &outpu
     uint64_t lastLkmer, lastRkmer;
     uint64_t kp1mer;
     progressbar bar(kp1merCount);
+    uint64_t rKmerMask = (~((uint64_t)0x3 << ((kp1 << 1) - 2)));
     for (uint64_t i = 0; i < kp1merCount; ++i) {
         err_fread_noeof(&kp1mer, sizeof(uint64_t), 1, inputFile);
         uint64_t lkmer = kp1mer >> 2;
-        uint64_t rkmer = kp1mer & (~(0x3 << ((kp1 << 1) - 2)));
+        uint64_t rkmer = kp1mer & rKmerMask;
+        // fprintf(stderr, "%s\n%s\n%s\n%s\n", 
+        //     uint64_to_kmer(kp1mer, 32).c_str(), 
+        //     uint64_to_kmer(lkmer, 32).c_str(), 
+        //     uint64_to_kmer(rkmer, 32).c_str(),
+        //     uint64_to_kmer(rKmerMask, 32).c_str()
+        // );
+        // getchar();
         if (ksmer) {
             kmerSet.insert(lkmer);
             kmerSet.insert(rkmer);
@@ -228,9 +239,10 @@ int split_core_legacy(const std::string &inputFileName, const std::string &outpu
             err_fwrite(&(*kmer), sizeof(uint64_t), 1, outputFile);
         }
         err_fclose(outputFile);
+        err_func_printf(__func__, "done. kmerCount: %lu\n", kmerCount);
     }
 
-    err_func_printf(__func__, "writing to .o.smer file...");
+    err_func_printf(__func__, "writing to .o.smer file...\n");
     outputFile = xopen(osmerFileName.c_str(), "wb"); // 写入.o.smer
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
     err_fwrite(&k, sizeof(uint32_t), 1, outputFile);
@@ -239,6 +251,7 @@ int split_core_legacy(const std::string &inputFileName, const std::string &outpu
         err_fwrite(&(*kmer), sizeof(uint64_t), 1, outputFile);
     }
     err_fclose(outputFile);
+    err_func_printf(__func__, "done. okmerCount: %lu\n", okmerCount);
 
     return 0;
 }

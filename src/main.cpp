@@ -61,6 +61,7 @@ int merge_main(int argc, char *argv[])
 {
     cmdline::parser a;
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.add("distinct", 'd', "if make result distinct");
     a.footer("inputFileNames");
     a.parse_check(argc, argv);
     if (a.rest().size() < 1) {
@@ -70,7 +71,7 @@ int merge_main(int argc, char *argv[])
     else {
         return merge_core(
             a.rest(), a.get<string>("outputFileName"),
-            true, 1
+            a.exist("distinct"), 1
         );
     }
 }
@@ -147,6 +148,7 @@ int split_main(int argc, char *argv[])
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
+    a.add("legacy", '\0', "user legacy method (much slower)");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -154,6 +156,13 @@ int split_main(int argc, char *argv[])
         return 1;
     }
     else {
+        if (a.exist("legacy")) {
+            return split_core_legacy(
+                a.rest()[0],
+                a.get<string>("outputFileName"),
+                a.exist("ksmer")
+            );
+        }
         return split_core(
             a.rest()[0],
             a.get<string>("outputFileName"),

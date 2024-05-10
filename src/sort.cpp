@@ -54,7 +54,7 @@ void ktf_sort(void* data, long i, int tid) {
     err_fwrite(numbers, sizeof(uint64_t), bufferCount, tmpWrite);
     free(numbers);
     err_fclose(tmpWrite);
-    err_func_printf(__func__, "tid:%d, i:%ld, bufferCount:%lu, from %lu to %lu, done.\n", tid, i, bufferCount, startCount, endCount);
+    err_func_printf(__func__, "tid:%d done.\n", tid);
 }
 
 /**

@@ -51,6 +51,7 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
         minHeap.__insert_start(kmer, i, false);
         minHeapBuf[i] = kmer;
     }
+    err_func_printf(__func__, "kmerCount before merge: %lu\n", kmerCount);
 
     minHeap.__init();
 
@@ -96,6 +97,8 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
         err_fwrite(&minValue, sizeof(uint64_t), 1, outputFile);
         lastKmer = minValue;
     }
+
+    err_func_printf(__func__, "kmerCount after merge: %lu\n", kmerCount);
 
     if (distinct) {
         // 写入去重后的kmer数
