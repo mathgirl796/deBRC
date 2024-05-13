@@ -443,6 +443,20 @@ std::string string_format(const char *fmt, ...) {
     return result;
 }
 
+#include <vector>
+#include <sstream>
+using namespace std;
+vector<string> split(string s, char sep)
+{
+    istringstream iss(s);
+    vector<string> res;
+    string buffer;
+    while(getline(iss, buffer, sep)){
+        res.push_back(buffer);
+    }
+    return res;
+}
+
 
 //for kseq
 

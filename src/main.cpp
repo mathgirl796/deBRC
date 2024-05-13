@@ -13,6 +13,7 @@
 #include "others.hpp"
 #include "split.hpp"
 #include "walk.hpp"
+#include "restore.hpp"
 
 using namespace std;
 
@@ -174,8 +175,8 @@ int split_main(int argc, char *argv[])
 int walk_main(int argc, char *argv[])
 {
     cmdline::parser a;
-    a.add<string>("kFileName", 'k', "output file path (without extension)", false, "");
-    a.add<string>("okFileName", 'l', "output file path (without extension)", true);
+    a.add<string>("kFileName", 'k', ".k.mer file path", false, "");
+    a.add<string>("okFileName", 'l', ".o.mer file path", true);
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
     a.add("passSpecialCharactors", '\0', "don't store bad brc which has unknown charactors");
@@ -199,6 +200,28 @@ int walk_main(int argc, char *argv[])
     }
 }
 
+int restore_main(int argc, char *argv[])
+{
+    cmdline::parser a;
+    a.add<string>("kFileName", 'k', ".k.mer file path", false, "");
+    a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
+    a.footer("brcFileName");
+    a.parse_check(argc, argv);
+    if (a.rest().size() != 1) {
+        cerr << a.usage();
+        return 1;
+    }
+    else {
+        return restore_core(
+            a.get<string>("kFileName"),
+            a.rest()[0],
+            a.get<string>("outputFileName"),
+            a.get<int>("nThreads")
+        );
+    }
+}
+
 int main(int argc, char *argv[])
 {
     err_func_printf(__func__, "program start, argv:\n");
@@ -215,8 +238,9 @@ int main(int argc, char *argv[])
     // h.add_function("extract", "proper version of kmc&convert", extract_main);
     h.add_function("view", "view .mer or .smer file", view_main);
     h.add_function("check", "check .mer or .smer file is no-decrease or not", check_main);
-    h.add_function("split", "split kp1.smer to k.smer & o.smer", split_main);
-    h.add_function("walk", "generate brc using k.smer(optional) & o.smer", walk_main);
+    h.add_function("split", "split kp1.smer to k.smer(optional) & o.smer", split_main);
+    h.add_function("walk", "generate brc using fasta & o.smer & k.smer(optional)", walk_main);
+    h.add_function("restore", "restore fasta using k.mer & brc", restore_main);
     int ret = h.run(argc, argv);
 
     struct rusage usage;

@@ -290,3 +290,7 @@ typedef struct {							\
 kseq_t *kseq_init(type_t fd);
 void kseq_destroy(kseq_t *ks);
 int kseq_read(kseq_t *seq);
+
+#include <vector>
+using namespace std;
+vector<string> split(string s, char sep);
