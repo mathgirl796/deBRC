@@ -179,6 +179,7 @@ int walk_main(int argc, char *argv[])
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
     a.add("passSpecialCharactors", '\0', "don't store bad brc which has unknown charactors");
+    a.add("useKmerFormat", '\0', "output kmer format");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -192,7 +193,8 @@ int walk_main(int argc, char *argv[])
             a.rest()[0],
             a.get<string>("outputFileName"),
             a.get<int>("nThreads"),
-            a.exist("passSpecialCharactors")
+            a.exist("passSpecialCharactors"),
+            a.exist("useKmerFormat")
         );
     }
 }

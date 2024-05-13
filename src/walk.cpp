@@ -15,10 +15,15 @@ enum class BrcType {good, bad};
 struct WalkData {
     vector<string> seqList;
     vector<string> idList;
-    vector<string> outputList;
     set<uint64_t> okmerSet;
     uint32_t k;
     bool passSpecialCharactors;
+
+    // fastaFormat output
+    vector<string> outputList;
+
+    // kmerFormat output
+    bool useKmerFormat;
 };
 
 void ktf_walk(void* data, long i, int tid) {
@@ -32,6 +37,7 @@ void ktf_walk(void* data, long i, int tid) {
     uint64_t brc_id = 0;
     uint64_t brc_length = 0;
     uint64_t kmer = 0;
+    uint64_t startPosOnSeq = 0;
     BrcType brcType;
     MerType merType;
     int badBasePos = -1;
@@ -44,6 +50,7 @@ void ktf_walk(void* data, long i, int tid) {
                 brc += seq[j]; // 一条sequence的头k-1个base一定要写进去
                 brc_length ++;
             }
+            startPosOnSeq = 0;
         }
         // 读入一个base
         unsigned char newBase = nst_nt4_table[(int)seq[i + k - 1]];
@@ -67,7 +74,8 @@ void ktf_walk(void* data, long i, int tid) {
         // err_printf("%d\t %d\n", brcType, merType);
 
         if (brcType == BrcType::good && merType == MerType::o) {
-            brc += seq[i + k - 1];
+            if (walkData->useKmerFormat) brc += seq.substr(i, k);
+            else brc += seq[i + k - 1];
             brc_length ++;
         }
         else if (brcType == BrcType::good && merType == MerType::i) {
@@ -75,34 +83,39 @@ void ktf_walk(void* data, long i, int tid) {
         }
         else if (brcType == BrcType::good && merType == MerType::x) {
             // 输出brc到文件, 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
-            output.append(string_format(">%ld|%ld|%s\n%s\n\n", brc_length, brc_id, id.c_str(), brc.c_str()));
-            // 初始化下一个brc到内存中
+            output += string_format(">%lu|%lu|%lu|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, id.c_str(), brc.c_str());
+            // 确定下一个brc的类型
             brcType = BrcType::bad;
+            // 初始化下一个brc到内存中
             brc_length = k;
             brc_id ++;
-            brc = brc.substr(brc.size() - k + 1);
-            brc += seq[i + k - 1];
+            brc = seq.substr(i, k);
+            startPosOnSeq = i;
         }
         else if (brcType == BrcType::bad && merType == MerType::o) {
             // 输出brc到文件, 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
-            if (walkData->passSpecialCharactors != true)
-                output.append(string_format(">%ld|%ld|%s\n%s\n\n", brc_length, brc_id, id.c_str(), brc.c_str()));
-            // 初始化下一个brc到内存中
+            output += string_format(">%lu|%lu|%lu|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, id.c_str(), brc.c_str());
+            // 确定下一个brc的类型
             brcType = BrcType::good;
+            // 初始化下一个brc到内存中
             brc_length = k;
             brc_id ++;
-            brc = brc.substr(brc.size() - k + 1);
-            brc += seq[i + k - 1];
+            brc = seq.substr(i, k);
+            startPosOnSeq = i;
+            // 直接保存当前的omer
+            if (walkData->useKmerFormat) brc += seq.substr(i, k);
+            else brc += seq[i + k - 1];
         }
         else if (brcType == BrcType::bad && merType == MerType::i) {
             // 输出brc到文件, 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
-            if (walkData->passSpecialCharactors != true)
-                output.append(string_format(">%ld|%ld|%s\n%s\n\n", brc_length, brc_id, id.c_str(), brc.c_str()));
-            // 初始化下一个brc到内存中
+            output += string_format(">%lu|%lu|%lu|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, id.c_str(), brc.c_str());
+            // 确定下一个brc的类型
             brcType = BrcType::good;
+            // 初始化下一个brc到内存中
             brc_length = k;
             brc_id ++;
-            brc = brc.substr(brc.size() - k + 1);
+            brc = seq.substr(i, k);
+            startPosOnSeq = i;
         }
         else if (brcType == BrcType::bad && merType == MerType::x) {
             brc += seq[i + k - 1];
@@ -110,15 +123,16 @@ void ktf_walk(void* data, long i, int tid) {
         }
     }
     // 输出最后一个brc到文件
-    if (brcType == BrcType::good || walkData->passSpecialCharactors != true)
-        output += string_format(">%ld|%ld|%s\n%s\n\n", brc_length, brc_id, id.c_str(), brc.c_str());
-    walkData->outputList[i] = output;
+    if (brcType == BrcType::good || walkData->passSpecialCharactors != true) {
+        output += string_format(">%lu|%lu|%lu|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, id.c_str(), brc.c_str());
+        walkData->outputList[i] = output;
+    }
     err_func_printf(__func__, "worker %d finish work\n", tid);
 }
 
 int walk_core(const std::string &kFileName, const std::string &okFileName, 
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
-    bool passSpecialCharactors) {
+    bool passSpecialCharactors, bool useKmerFormat) {
 
     uint32_t ok = 0;
     uint64_t okmerNum = 0;
@@ -142,14 +156,13 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     string fullOutputFileName = outputFileName;
     if (passSpecialCharactors) fullOutputFileName += ".passN"; // 若不保留未知字符导致的xBrc，则加后缀注明
     fullOutputFileName += ".brc";
-    FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
-    setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
 
     // 创建ktf worker所需数据结构
     struct WalkData walkData;
     walkData.k = k;
     walkData.outputList = vector<string>();
     walkData.passSpecialCharactors = passSpecialCharactors;
+    walkData.useKmerFormat = useKmerFormat;
     gzFile fp = xzopen(faFileName.c_str(), "r");
     kseq_t *seqs = kseq_init(fp);
     while (kseq_read(seqs) >= 0) {
@@ -172,17 +185,22 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     }
     bar.end();
 
+    // 执行walk任务
+    err_func_printf(__func__, "total %lu tasks\n", walkData.idList.size());
     kt_for(nThreads, ktf_walk, &walkData, walkData.idList.size());
 
+    // fasta格式的输出
     err_func_printf(__func__, "writing results to %s\n", fullOutputFileName.c_str()); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
+    FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
+    setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
     progressbar bar2(walkData.outputList.size());
     for (size_t i = 0; i < walkData.outputList.size(); ++i) {
         err_fprintf(outputFile, walkData.outputList[i].c_str());
         bar2.update();
     }
     bar2.end();
+    err_fclose(outputFile);
 
     err_fclose(okFile);
-    err_fclose(outputFile);
     return 0;
 }

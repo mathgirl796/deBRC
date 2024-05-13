@@ -23,7 +23,7 @@ clean:
 	rm -rf obj/*
 
 clean_main:
-	rm bin/main
+	rm $(TARGET)
 
 rebuild: clean $(TARGET)
 main: clean_main $(TARGET)
