@@ -145,7 +145,6 @@ int split_main(int argc, char *argv[])
 {
     cmdline::parser a;
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
-    a.add("ksmer", '\0', "need .k.smer");
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
@@ -161,13 +160,14 @@ int split_main(int argc, char *argv[])
             return split_core_legacy(
                 a.rest()[0],
                 a.get<string>("outputFileName"),
-                a.exist("ksmer")
+                false
             );
         }
         return split_core(
             a.rest()[0],
             a.get<string>("outputFileName"),
-            a.exist("ksmer"),a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
+            false,
+            a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
         );
     }
 }
@@ -175,7 +175,7 @@ int split_main(int argc, char *argv[])
 int walk_main(int argc, char *argv[])
 {
     cmdline::parser a;
-    a.add<string>("kFileName", 'k', ".k.mer file path", false, "");
+    a.add<string>("smerFileName", 's', ".smer file path(kp1)", true);
     a.add<string>("okFileName", 'l', ".o.mer file path", true);
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
@@ -189,7 +189,7 @@ int walk_main(int argc, char *argv[])
     }
     else {
         return walk_core(
-            a.get<string>("kFileName"),
+            a.get<string>("smerFileName"),
             a.get<string>("okFileName"),
             a.rest()[0],
             a.get<string>("outputFileName"),
@@ -203,7 +203,7 @@ int walk_main(int argc, char *argv[])
 int restore_main(int argc, char *argv[])
 {
     cmdline::parser a;
-    a.add<string>("kFileName", 'k', ".k.mer file path", false, "");
+    a.add<string>("smerFileName", 's', ".smer(kp1) file path", false, "");
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
     a.footer("brcFileName");
@@ -214,7 +214,7 @@ int restore_main(int argc, char *argv[])
     }
     else {
         return restore_core(
-            a.get<string>("kFileName"),
+            a.get<string>("smerFileName"),
             a.rest()[0],
             a.get<string>("outputFileName"),
             a.get<int>("nThreads")
@@ -238,8 +238,8 @@ int main(int argc, char *argv[])
     // h.add_function("extract", "proper version of kmc&convert", extract_main);
     h.add_function("view", "view .mer or .smer file", view_main);
     h.add_function("check", "check .mer or .smer file is no-decrease or not", check_main);
-    h.add_function("split", "split kp1.smer to k.smer(optional) & o.smer", split_main);
-    h.add_function("walk", "generate brc using fasta & o.smer & k.smer(optional)", walk_main);
+    h.add_function("split", "analysis kp1.smer to generate o.smer", split_main);
+    h.add_function("walk", "generate brc using fasta & o.smer & .smer(optional)", walk_main);
     h.add_function("restore", "restore fasta using k.mer & brc", restore_main);
     int ret = h.run(argc, argv);
 

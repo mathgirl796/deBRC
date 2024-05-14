@@ -4,8 +4,6 @@
 #include "utils.hpp"
 #include "klib/kthread.hpp"
 
-// TODO: 用kt_pipeline改写成读算写三阶段，这样就可以处理大输入文件了
-
 extern unsigned char nst_nt4_table[256];
 
 enum class MerType {x, i, o};
@@ -15,7 +13,7 @@ struct WalkData {
     vector<string> seqList;
     vector<string> idList;
     set<uint64_t> okmerSet;
-    uint32_t k;
+    uint32_t kp1;
     bool passSpecialCharactors;
 
     // fastaFormat output
@@ -32,49 +30,61 @@ void ktf_walk(void* data, long i, int tid) {
     string id = walkData->idList[i];
     string seq = walkData->seqList[i];
     string output = "";
-    uint32_t k = walkData->k;
+    uint32_t kp1 = walkData->kp1;
+    uint32_t k = kp1 - 1;
     uint64_t brc_id = 0;
     uint64_t brc_length = 0;
-    uint64_t kmer = 0;
+    uint64_t kp1mer = 0;
     uint64_t startPosOnSeq = 0;
     BrcType brcType;
     MerType merType;
     int badBasePos = -1;
     string brc;
-    for (size_t i = 0; i < seq.length() - k + 1; ++i) {
-
-        if (i == 0) { /* 一条seq头一个kmer的处理！ */
-            for (uint32_t j = 0; j < k - 1; ++j) { // 头一个kmer的前k-1个base
-                kmer = (kmer << 2) | nst_nt4_table[(int)seq[j]];
+    unsigned char newBase;
+    // 遍历所有kp1mer
+    for (size_t i = 0; i < seq.length() - kp1 + 1; ++i) {
+        /* 一条seq头一个kp1mer的处理！（初始化读入kmer） */
+        if (i == 0) {
+            for (uint32_t j = 0; j < kp1 - 1; ++j) { // 读入头一个kmer的前k-1个base
+                newBase = nst_nt4_table[(int)seq[j]];
+                if (newBase >= 4) { // 处理特殊base
+                    badBasePos = kp1 - 1;
+                }
+                else {
+                    badBasePos --;
+                }
+                kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & (~(((uint64_t)-1) << (kp1 << 1)));
             }
-            brc = seq.substr(i, k - 1); // 一条sequence的头k-1个base一定要写进去
-            brc_length = k - 1;
+            brc = seq.substr(0, k); // 一条sequence的头一个kmer一定要写入brc
+            brc_length = k;
             startPosOnSeq = 0;
         }
+
         // 读入一个base
-        unsigned char newBase = nst_nt4_table[(int)seq[i + k - 1]];
+        newBase = nst_nt4_table[(int)seq[i + kp1 - 1]];
         // 处理特殊base
         if (newBase >= 4) {
-            badBasePos = k - 1;
+            badBasePos = kp1 - 1;
         }
         else {
             badBasePos --;
         }
-
-        kmer = ((kmer << 2) | (newBase & 0x3)) & (~(((uint64_t)-1) << (k << 1)));
+        // 把读入的base加入kp1mer
+        kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & (~(((uint64_t)-1) << (kp1 << 1)));
         if (badBasePos >= 0) merType = MerType::x;
-        else if (walkData->okmerSet.find(kmer) == walkData->okmerSet.end()) merType = MerType::i;
+        else if (walkData->okmerSet.find(kp1mer) == walkData->okmerSet.end()) merType = MerType::i;
         else merType = MerType::o;
 
-        if (i == 0) { /* 一条seq头一个kmer的处理！ */
+        /* 一条seq头一个kp1mer的处理！（初始化BrcType） */
+        if (i == 0) {
             brcType = (merType == MerType::x) ? (BrcType::bad) : (BrcType::good);
         }
 
         // err_printf("%d\t %d\n", brcType, merType);
 
         if (brcType == BrcType::good && merType == MerType::o) {
-            if (walkData->useKmerFormat) brc += seq.substr(i, k);
-            else brc += seq[i + k - 1];
+            if (walkData->useKmerFormat) brc += seq.substr(i + 1, k);
+            else brc += seq[i + kp1 - 1];
             brc_length ++;
         }
         else if (brcType == BrcType::good && merType == MerType::i) {
@@ -87,8 +97,20 @@ void ktf_walk(void* data, long i, int tid) {
             brcType = BrcType::bad;
             // 初始化下一个brc到内存中
             brc_id ++;
+            brc = seq[i + kp1 - 1];
+            brc_length = 1;
+            startPosOnSeq = i + kp1 - 1;
+        }
+        else if (brcType == BrcType::bad && merType == MerType::i) {
+            // 输出brc到文件, 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
+            if (walkData->passSpecialCharactors != true)
+                output += string_format(">%lu|%lu|%lu|%s|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, (brcType == BrcType::good) ? ("good"):("bad"), id.c_str(), brc.c_str());
+            // 确定下一个brc的类型
+            brcType = BrcType::good;
+            // 初始化下一个brc到内存中
+            brc_id ++;
             brc = seq.substr(i, k);
-            brc_length = k;
+            brc_length = kp1;
             startPosOnSeq = i;
         }
         else if (brcType == BrcType::bad && merType == MerType::o) {
@@ -99,27 +121,12 @@ void ktf_walk(void* data, long i, int tid) {
             brcType = BrcType::good;
             // 初始化下一个brc到内存中
             brc_id ++;
-            brc = seq.substr(i, k - 1);
-            brc_length = k;
-            startPosOnSeq = i;
-            // 处理当前的omer
-            if (walkData->useKmerFormat) brc += seq.substr(i, k);
-            else brc += seq[i + k - 1];
-        }
-        else if (brcType == BrcType::bad && merType == MerType::i) {
-            // 输出brc到文件, 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
-            if (walkData->passSpecialCharactors != true)
-                output += string_format(">%lu|%lu|%lu|%s|%s\n%s\n\n", brc_id, brc_length, startPosOnSeq, (brcType == BrcType::good) ? ("good"):("bad"), id.c_str(), brc.c_str());
-            // 确定下一个brc的类型
-            brcType = BrcType::good;
-            // 初始化下一个brc到内存中
-            brc_id ++;
-            brc = seq.substr(i, k - 1);
-            brc_length = k;
+            brc = seq.substr(i, kp1);
+            brc_length = kp1;
             startPosOnSeq = i;
         }
         else if (brcType == BrcType::bad && merType == MerType::x) {
-            brc += seq[i + k - 1];
+            brc += seq[i + kp1 - 1];
             brc_length ++;
         }
     }
@@ -131,28 +138,17 @@ void ktf_walk(void* data, long i, int tid) {
     err_func_printf(__func__, "worker %d finish work\n", tid);
 }
 
-int walk_core(const std::string &kFileName, const std::string &okFileName, 
+int walk_core(const std::string &smerFileName, const std::string &okFileName, 
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
     bool passSpecialCharactors, bool useKmerFormat) {
 
-    uint32_t ok = 0;
-    uint64_t okmerNum = 0;
+    uint32_t kp1 = 0;
+    uint64_t omerNum = 0;
 
-    FILE *okFile = xopen(okFileName.c_str(), "rb");
-    setvbuf(okFile, NULL, _IOFBF, CommonFileBufSize);
-    err_fread_noeof(&ok, sizeof(uint32_t), 1, okFile);
-    err_fread_noeof(&okmerNum, sizeof(uint64_t), 1, okFile);
-
-    uint32_t k = ok;
-    // uint64_t kmerNum = 0;
-    // FILE *kFile = xopen(kFileName.c_str(), "rb");
-    // setvbuf(kFile, NULL, _IOFBF, CommonFileBufSize);
-    // err_fread_noeof(&k, sizeof(uint32_t), 1, kFile);
-    // err_fread_noeof(&kmerNum, sizeof(uint64_t), 1, kFile);
-
-    if (k != ok) {
-        perror("inputed kFile is not compatable with okFile");
-    }
+    FILE *omer = xopen(okFileName.c_str(), "rb");
+    setvbuf(omer, NULL, _IOFBF, CommonFileBufSize);
+    err_fread_noeof(&kp1, sizeof(uint32_t), 1, omer);
+    err_fread_noeof(&omerNum, sizeof(uint64_t), 1, omer);
 
     string fullOutputFileName = outputFileName;
     if (passSpecialCharactors) fullOutputFileName += ".passN"; // 若不保留未知字符导致的xBrc，则加后缀注明
@@ -161,16 +157,18 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
 
     // 创建ktf worker所需数据结构
     struct WalkData walkData;
-    walkData.k = k;
+    walkData.kp1 = kp1;
     walkData.outputList = vector<string>();
     walkData.passSpecialCharactors = passSpecialCharactors;
     walkData.useKmerFormat = useKmerFormat;
     gzFile fp = xzopen(faFileName.c_str(), "r");
     kseq_t *seqs = kseq_init(fp);
     while (kseq_read(seqs) > 0) {
-        // fprintf(stderr, "%s | %s\n", seqs->name.s, seqs->seq.s);
+        // fprintf(stderr, "%s|%s\n", seqs->name.s, seqs->comment.s);
         walkData.seqList.push_back(string(seqs->seq.s));
-        walkData.idList.push_back(string(seqs->name.s));
+        string fullSeqName = string(seqs->name.s);
+        if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
+        walkData.idList.push_back(fullSeqName);
         walkData.outputList.push_back("");
     }
     gzclose(fp);
@@ -178,11 +176,11 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     // 加载okmer到内存
     err_func_printf(__func__, "loading %s\n", okFileName.c_str()); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
     set<uint64_t> okmerSet;
-    progressbar bar(okmerNum);
-    for (uint64_t i = 0; i < okmerNum; ++i) {
-        uint64_t kmer;
-        err_fread_noeof(&kmer, sizeof(uint64_t), 1, okFile);
-        walkData.okmerSet.insert(kmer);
+    progressbar bar(omerNum);
+    for (uint64_t i = 0; i < omerNum; ++i) {
+        uint64_t kp1mer;
+        err_fread_noeof(&kp1mer, sizeof(uint64_t), 1, omer);
+        walkData.okmerSet.insert(kp1mer);
         bar.update();
     }
     bar.end();
@@ -203,6 +201,6 @@ int walk_core(const std::string &kFileName, const std::string &okFileName,
     bar2.end();
     err_fclose(outputFile);
 
-    err_fclose(okFile);
+    err_fclose(omer);
     return 0;
 }
