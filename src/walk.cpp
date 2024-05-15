@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <unordered_set>
 #include "utils.hpp"
 #include "klib/kthread.hpp"
 
@@ -12,7 +13,7 @@ enum class BrcType {good, bad};
 struct WalkData {
     vector<string> seqList;
     vector<string> idList;
-    set<uint64_t> okmerSet;
+    unordered_set<uint64_t> okmerSet;
     uint32_t kp1;
     bool passSpecialCharactors;
 
@@ -41,6 +42,8 @@ void ktf_walk(void* data, long i, int tid) {
     int badBasePos = -1;
     string brc;
     unsigned char newBase;
+    uint64_t kp1merUpdateMask = (~(((uint64_t)-1) << (kp1 << 1)));
+    if (kp1 == 32) {kp1merUpdateMask = ~kp1merUpdateMask;}
     // 遍历所有kp1mer
     for (size_t i = 0; i < seq.length() - kp1 + 1; ++i) {
         /* 一条seq头一个kp1mer的处理！（初始化读入kmer） */
@@ -53,7 +56,7 @@ void ktf_walk(void* data, long i, int tid) {
                 else {
                     badBasePos --;
                 }
-                kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & (~(((uint64_t)-1) << (kp1 << 1)));
+                kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & kp1merUpdateMask;
             }
             brc = seq.substr(0, k); // 一条sequence的头一个kmer一定要写入brc
             brc_length = k;
@@ -70,7 +73,7 @@ void ktf_walk(void* data, long i, int tid) {
             badBasePos --;
         }
         // 把读入的base加入kp1mer
-        kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & (~(((uint64_t)-1) << (kp1 << 1)));
+        kp1mer = ((kp1mer << 2) | (newBase & 0x3)) & kp1merUpdateMask;
         if (badBasePos >= 0) merType = MerType::x;
         else if (walkData->okmerSet.find(kp1mer) == walkData->okmerSet.end()) merType = MerType::i;
         else merType = MerType::o;
@@ -175,7 +178,6 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
 
     // 加载okmer到内存
     err_func_printf(__func__, "loading %s\n", okFileName.c_str()); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
-    set<uint64_t> okmerSet;
     progressbar bar(omerNum);
     for (uint64_t i = 0; i < omerNum; ++i) {
         uint64_t kp1mer;
@@ -184,6 +186,8 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
         bar.update();
     }
     bar.end();
+    err_func_printf(__func__, "done, total %lu omers\n", walkData.okmerSet.size()); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
+
 
     // 执行walk任务
     err_func_printf(__func__, "total %lu tasks\n", walkData.idList.size());

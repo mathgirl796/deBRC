@@ -1,8 +1,13 @@
 #!/bin/bash
 
+echo "making tmp file..."
 tr -d '\n' < $1 > $1.diff.tmp
 tr -d '\n' < $2 > $2.diff.tmp
-echo $(tr -d '\n' < $1) > $1.diff.comb
-echo $(tr -d '\n' < $2) >> $1.diff.comb
-diff $1.diff.tmp $2.diff.tmp
-# rm $1.diff.tmp $2.diff.tmp
+# echo $(tr -d '\n' < $1) > $1.diff.comb
+# echo $(tr -d '\n' < $2) >> $1.diff.comb
+echo "diffing..."
+diff $1.diff.tmp $2.diff.tmp > /dev/null
+result=$?
+echo "diff return code: $result"
+rm -f $1.diff.tmp $2.diff.tmp
+exit $result

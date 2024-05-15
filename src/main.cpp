@@ -206,6 +206,7 @@ int restore_main(int argc, char *argv[])
     a.add<string>("smerFileName", 's', ".smer(kp1) file path", false, "");
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
+    a.add("useKmerFormat", '\0', "output kmer format");
     a.footer("brcFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -217,7 +218,8 @@ int restore_main(int argc, char *argv[])
             a.get<string>("smerFileName"),
             a.rest()[0],
             a.get<string>("outputFileName"),
-            a.get<int>("nThreads")
+            a.get<int>("nThreads"),
+            a.exist("useKmerFormat")
         );
     }
 }
