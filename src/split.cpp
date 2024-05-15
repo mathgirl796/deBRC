@@ -45,19 +45,17 @@ void ktf_split(void* data, long i, int tid) {
 
     // 把kp1mers中的omer存入临时文件
     err_func_printf(__func__, "worker:%d, i:%ld, bufferCount:%lu, from %lu to %lu, start.\n", tid, i, bufferCount, startCount, endCount);
-    uint32_t k  = d->kp1 - 1, kp1 = d->kp1;
-    uint64_t merCount = 0, omerCount = 0;
+    uint32_t kp1 = d->kp1;
+    uint64_t omerCount = 0;
     FILE *omerFile;
     omerFile = xopen(d->tmpOmerFileNames[i].c_str(), "wb+");
     setvbuf(omerFile, NULL, _IOFBF, CommonFileBufSize);
     err_fwrite(&kp1, sizeof(uint32_t), 1, omerFile);
     err_fwrite(&omerCount, sizeof(uint64_t), 1, omerFile);
-    uint64_t lastLkmer = 0, lastRkmer = 0;
-    uint64_t rKmerMask = (~((uint64_t)0x3 << ((kp1 << 1) - 2)));
+    uint64_t lastLkmer = 0;
     for (uint64_t i = 0; i < bufferCount; ++i) {
         uint64_t kp1mer = kp1mers[i];
         uint64_t lkmer = kp1mer >> 2;
-        uint64_t rkmer = kp1mer & rKmerMask;
         // fprintf(stderr, "%s\n%s\n%s\n", uint64_to_kmer(kp1mer, kp1).c_str(), uint64_to_kmer(lkmer, k).c_str(), uint64_to_kmer(rkmer, kp1).c_str());
         // getchar();
         if(i > 0 && lkmer == lastLkmer) {
@@ -66,7 +64,6 @@ void ktf_split(void* data, long i, int tid) {
             omerCount += 2;
         }
         lastLkmer = lkmer;
-        lastRkmer = rkmer;
     }
     free(kp1mers);
 
@@ -112,7 +109,7 @@ int split_core(const std::string &inputFileName, const std::string &outputFileNa
     data.inputFileLock = PTHREAD_MUTEX_INITIALIZER;
     data.kp1 = kp1;
     data.kmerCount = kp1merCount;
-    data.singleBufferKmerCount = (uint64_t)maxRamGB * OneGiga / nThreads / sizeof(uint64_t) / 2; // 最后一个除2是调整内存用量
+    data.singleBufferKmerCount = (uint64_t)maxRamGB * OneGiga / nThreads / sizeof(uint64_t);
     // data.singleBufferKmerCount = 1000000;
     xassert(data.singleBufferKmerCount > 0, "maxRamGB too small or nThreads too large!");
     data.totalTaskNum = (data.kmerCount - 1) / data.singleBufferKmerCount + 1;

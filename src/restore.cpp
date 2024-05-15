@@ -137,7 +137,7 @@ int restore_core(const std::string &smerFileName, const std::string &brcFileName
     // 输出到文件
     err_func_printf(__func__, "output to file, total %lu tasks\n", data.infoList.size());
     string fullOutputFileName = outputFileName;
-    if (useKmerFormat) {fullOutputFileName += "kmer";}
+    if (useKmerFormat) {fullOutputFileName += ".kmer";}
     fullOutputFileName += ".restore.fa";
     FILE *outputFile = xopen(fullOutputFileName.c_str(), "w");
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);

@@ -78,7 +78,7 @@ int sort_core(const std::string &inputFileName, const std::string &outputFileNam
     data.tmpFileLock = PTHREAD_MUTEX_INITIALIZER;
     data.kmerLength = kmerLength;
     data.kmerCount = kmerCount;
-    data.singleBufferKmerCount = (uint64_t)maxRamGB * OneGiga / nThreads / sizeof(uint64_t);
+    data.singleBufferKmerCount = (uint64_t)maxRamGB * OneGiga / nThreads / sizeof(uint64_t) / 2; // 最后除以2是实验得出的结论，这样大概能把内存控制到范围内
     xassert(data.singleBufferKmerCount > 0, "maxRamGB too small or nThreads too large!");
     data.tmpPath = tmpPath;
     err_func_printf(__func__, "singleBufferKmerCount:[%lu], tmpPath:[%s]\n", data.singleBufferKmerCount, tmpPath.c_str());
