@@ -122,13 +122,16 @@ int restore_core(const std::string &smerFileName, const std::string &brcFileName
     uint64_t kp1merNum = 0;
     err_fread_noeof(&(data.kp1), sizeof(uint32_t), 1, smerFile);
     err_fread_noeof(&kp1merNum, sizeof(uint64_t), 1, smerFile);
+    data.kmerMap.reserve(kp1merNum);
+    err_func_printf(__func__, "before load data: bucket_count of unordered_map = %lu, begin load data\n", data.kmerMap.bucket_count());
+    uint8_t valueTable[4] = {1, 2, 4, 8};
     for (uint64_t i = 0; i < kp1merNum; ++i) {
         uint64_t kp1mer;
         err_fread_noeof(&kp1mer, sizeof(uint64_t), 1, smerFile);
-        data.kmerMap[kp1mer >> 2] |= (((uint8_t)0x1) << (kp1mer & 0x3));
+        data.kmerMap[kp1mer >> 2] |= valueTable[kp1mer & 0x3];
     }
     err_fclose(smerFile);
-    err_func_printf(__func__, "done, total %lu kp1mers, kmerMap total %lu keys\n", kp1merNum, data.kmerMap.size());
+    err_func_printf(__func__, "done, total %lu kp1mers, kmerMap total %lu keys, bucket_count of unordered_map = %lu\n", kp1merNum, data.kmerMap.size(), data.kmerMap.bucket_count());
 
     // ktf执行restore任务
     err_func_printf(__func__, "total %lu tasks\n", data.infoList.size());

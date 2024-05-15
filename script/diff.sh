@@ -8,6 +8,6 @@ tr -d '\n' < $2 > $2.diff.tmp
 echo "diffing..."
 diff $1.diff.tmp $2.diff.tmp > /dev/null
 result=$?
-echo "diff return code: $result"
+echo "diff return code: $result (0 means same)"
 rm -f $1.diff.tmp $2.diff.tmp
 exit $result

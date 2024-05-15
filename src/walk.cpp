@@ -166,6 +166,7 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
     walkData.useKmerFormat = useKmerFormat;
     gzFile fp = xzopen(faFileName.c_str(), "r");
     kseq_t *seqs = kseq_init(fp);
+    err_func_printf(__func__, "loading %s\n", faFileName.c_str()); 
     while (kseq_read(seqs) > 0) {
         // fprintf(stderr, "%s|%s\n", seqs->name.s, seqs->comment.s);
         walkData.seqList.push_back(string(seqs->seq.s));
