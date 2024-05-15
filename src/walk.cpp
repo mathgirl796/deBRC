@@ -86,7 +86,7 @@ void ktf_walk(void* data, long i, int tid) {
         // err_printf("%d\t %d\n", brcType, merType);
 
         if (brcType == BrcType::good && merType == MerType::o) {
-            if (walkData->useKmerFormat) brc += seq.substr(i + 1, k);
+            if (walkData->useKmerFormat) brc += seq.substr(i, k + 1);
             else brc += seq[i + kp1 - 1];
             brc_length ++;
         }

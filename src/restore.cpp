@@ -81,7 +81,7 @@ void ktf_restore(void* data, long i, int tid) {
                         uint64_to_kmer(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
                     exit(1);
                 }
-                if (useKmerFormat) {tmpBrcPos += k - 1;}
+                if (useKmerFormat) {tmpBrcPos += k;}
                 output += string_format("%c", brc[tmpBrcPos]);
                 newBase = nst_nt4_table[(int)brc[tmpBrcPos]];
                 tmpBrcPos ++;
