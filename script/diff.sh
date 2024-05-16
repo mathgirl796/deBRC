@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "input: [$1][$2]"
 echo "making tmp file..."
 tr -d '\n' < $1 > $1.diff.tmp
 tr -d '\n' < $2 > $2.diff.tmp

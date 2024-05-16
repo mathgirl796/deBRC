@@ -40,17 +40,17 @@ void ktf_restore(void* data, long i, int tid) {
 
     string output = "";
 
-    if (brcId == 0 && type == "good") {output += string_format("%s", brc.substr(0, k).c_str());}
-
     // 读入seq开始恢复fasta seq
     uint64_t tmpSeqLength = 0;
     uint64_t tmpBrcPos = 0;
     if (type == "bad") {
-        output += string_format("%s", brc.substr(0, brc.length()).c_str());
+        output += string_format("%s", brc.c_str());
         tmpSeqLength = seqLength;
         tmpBrcPos = brcLength;
     }
     else if (type == "good") {
+        output += string_format("%s", brc.substr(0, k).c_str());
+
         uint64_t kmer = 0;
         for (uint32_t i = 0; i < k; ++i) { // 头一个kmer
             kmer = (kmer << 2) | nst_nt4_table[(int)brc[i]];
