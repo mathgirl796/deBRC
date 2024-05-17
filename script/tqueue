@@ -1,0 +1,49 @@
+#!/bin/python3
+import curses
+import subprocess
+import sys
+from math import copysign
+
+window = curses.initscr()
+start_line = 0
+
+def display(stdscr):
+    stdscr.clear()
+    y, x = window.getmaxyx()
+
+    status = subprocess.check_output(['squeue'] + sys.argv[1:]).decode('utf-8')
+    outputs = status.split("\n")
+    stdscr.addstr(0, 0, outputs[0])
+    for i in range(1, min(y, len(outputs) - start_line)):
+        stdscr.addstr(i, 0, outputs[start_line + i])
+
+    stdscr.refresh()
+
+def main(stdscr):
+    global start_line
+
+    # 初始化 curses
+    curses.curs_set(0)  # 隐藏光标
+    curses.start_color()
+    curses.use_default_colors()
+    stdscr.nodelay(1)  # 设置非阻塞模式
+    stdscr.timeout(50)
+
+    # 初始化显示内容
+    while True:
+        # 模拟动态内容变化
+        display(stdscr)
+        key = window.getch()
+        if key == ord('q'):
+            exit(0)
+        elif key in [curses.KEY_DOWN, curses.KEY_SF]:
+            start_line += 1
+        elif key in [curses.KEY_UP, curses.KEY_SR]:
+            start_line = max(0, start_line - 1)
+        elif key in [curses.KEY_NPAGE]:
+            start_line += window.getmaxyx()[0] - 1
+        elif key in [curses.KEY_PPAGE]:
+            start_line = max(0, start_line - (window.getmaxyx()[0] - 1))
+        
+if __name__ == "__main__":
+    curses.wrapper(main)
