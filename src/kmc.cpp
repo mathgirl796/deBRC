@@ -3,7 +3,7 @@
 #include "kmc_api/kmc_file.h"
 #include "utils.hpp"
 
-int kmc_core(const std::vector<std::string> &inputFiles, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads, uint32_t kmerLen, const std::string &outputFileName) {
+int kmc_core(const std::vector<std::string> &inputFiles, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads, uint32_t kmerLen, const std::string &outputFileName, bool canonical) {
     try
     {       
         KMC::Runner runner;
@@ -11,7 +11,7 @@ int kmc_core(const std::vector<std::string> &inputFiles, const std::string &tmpP
         KMC::Stage1Params stage1Params;
         stage1Params
             .SetInputFileType(KMC::InputFileType::MULTILINE_FASTA) // must invoke this function to tell kmc the input type
-            .SetCanonicalKmers(false)
+            .SetCanonicalKmers(canonical)
             .SetInputFiles(inputFiles)
             .SetTmpPath(tmpPath)
             .SetMaxRamGB(maxRamGB)

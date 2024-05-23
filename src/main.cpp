@@ -25,6 +25,7 @@ int kmc_main(int argc, char *argv[])
     a.add<int>("kmerLen", 'k', "k-mer length", false, 25, cmdline::range(2, 32));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.add("canonical", '\0', "if count canonical-form kmers");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() < 1) {
@@ -35,7 +36,7 @@ int kmc_main(int argc, char *argv[])
         return kmc_core(
             a.rest(), a.get<string>("tmpPath"),
             a.get<int>("maxRamGB"), a.get<int>("nThreads"), a.get<int>("kmerLen"),
-            a.get<string>("outputFileName")
+            a.get<string>("outputFileName"), a.exist("canonical")
         );
     }
 }

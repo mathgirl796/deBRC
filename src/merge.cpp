@@ -135,6 +135,7 @@ int compare_core(const std::string &refFileName, const std::string &tgtFileName,
     // 打开输出文件，并暂时写入头部
     string rmtFileName = outputFileName + ".rmt.smer";
     string tmrFileName = outputFileName + ".tmr.smer";
+    string infoFileName = outputFileName + ".info.txt";
     FILE *rmtFile = xopen(rmtFileName.c_str(), "wb");
     FILE *tmrFile = xopen(tmrFileName.c_str(), "wb");
     setvbuf(rmtFile, NULL, _IOFBF, CommonFileBufSize);
@@ -184,13 +185,22 @@ int compare_core(const std::string &refFileName, const std::string &tgtFileName,
     err_fseek(tmrFile, sizeof(uint32_t), SEEK_SET);
     err_fwrite(&tmrKmerNum, sizeof(uint64_t), 1, tmrFile);
 
+    err_fprintf(stdout, "ref\t%s\n", refFileName.c_str());
+    err_fprintf(stdout, "tgt\t%s\n", tgtFileName.c_str());
     err_fprintf(stdout, "k\trefKmerNum\ttgtKmerNum\trmtKmerNum\ttmrKmerNum\n");
     err_fprintf(stdout, "%u\t%lu\t%lu\t%lu\t%lu\n", k, refKmerNum, tgtKmerNum, rmtKmerNum, tmrKmerNum);
 
+    FILE *infoFile = xopen(infoFileName.c_str(), "w");
+    err_fprintf(infoFile, "ref\t%s\n", refFileName.c_str());
+    err_fprintf(infoFile, "tgt\t%s\n", tgtFileName.c_str());
+    err_fprintf(infoFile, "k\trefKmerNum\ttgtKmerNum\trmtKmerNum\ttmrKmerNum\n");
+    err_fprintf(infoFile, "%u\t%lu\t%lu\t%lu\t%lu\n", k, refKmerNum, tgtKmerNum, rmtKmerNum, tmrKmerNum);
+    err_fclose(infoFile);
 
     err_fclose(refFile);
     err_fclose(tgtFile);
     err_fclose(rmtFile);
     err_fclose(tmrFile);
+
     return 0;
 }
