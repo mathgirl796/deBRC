@@ -62,7 +62,7 @@ void ktf_restore(void* data, long i, int tid) {
             sucState = kmerMap[kmer];
             if (sucState == 0) {
                 err_func_printf(__func__, "sucState == 0, there must be some bugs, error key: %s, tmpSeqLength: %lu/%lu, tmpBrcPos:%lu/%lu\n", 
-                    uint64_to_kmer(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
+                    uint64_to_str(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
                 exit(1);
             }
             unsigned char newBase; // 0, 1, 2, 3
@@ -71,14 +71,14 @@ void ktf_restore(void* data, long i, int tid) {
                 newBase = nst_nt4_table[(int)single2char[sucState]];
                 if (newBase >= 4) {
                     err_func_printf(__func__, "newBase >= 4, there must be some bugs, error key: %s, tmpSeqLength: %lu/%lu, tmpBrcPos:%lu/%lu\n", 
-                        uint64_to_kmer(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
+                        uint64_to_str(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
                     exit(1);
                 }
             }
             else {
                 if (tmpBrcPos >= brcLength) {
                     err_func_printf(__func__, "tmpBrcPos >= brcLength, there must be some bugs, error key: %s, tmpSeqLength: %lu/%lu, tmpBrcPos:%lu/%lu\n", 
-                        uint64_to_kmer(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
+                        uint64_to_str(kmer, k).c_str(), tmpSeqLength, seqLength, tmpBrcPos, brcLength);
                     exit(1);
                 }
                 if (useKmerFormat) {tmpBrcPos += k;}

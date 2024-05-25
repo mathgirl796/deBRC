@@ -262,7 +262,8 @@ public:
 
 #include <string>
 using namespace std;
-string uint64_to_kmer(uint64_t kmer, uint32_t k);
+string uint64_to_str(uint64_t kmer, uint32_t k);
+uint64_t str_to_uint64(string kmer, uint32_t k);
 
 std::string string_format(const char *fmt, ...);
 
@@ -294,3 +295,21 @@ int kseq_read(kseq_t *seq);
 #include <vector>
 using namespace std;
 vector<string> split(string s, char sep);
+
+// 循环右移kmer，k最大32，baseNum小于0为左移
+inline uint64_t ror_kmer(uint64_t kmer, uint32_t k, int baseNum) {
+    if (k > 32) {
+        err_func_printf(__func__, "rotate kmer error, k(%u) > 32\n", k);
+    }
+    bool left = false;
+    if (baseNum < 0) {
+        left = true;
+        baseNum = -baseNum;
+    }
+    if (left) {
+        return ((kmer << (baseNum<<1)) | (kmer >> ((k-baseNum)<<1))) & ((k < 32) ? ~((uint64_t)-1 << (k<<1)) : (uint64_t)-1);
+    }
+    else {
+        return ((kmer >> (baseNum<<1)) | (kmer << ((k-baseNum)<<1))) & ((k < 32) ? ~((uint64_t)-1 << (k<<1)) : (uint64_t)-1);
+    }
+}

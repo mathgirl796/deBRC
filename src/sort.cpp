@@ -19,6 +19,8 @@ struct SortData {
     uint64_t totalTaskNum;
     pthread_mutex_t tmpFileLock;
     vector<string> tmpFileNames;
+
+    bool usmer;
 };
 
 static int compare_uint64 (const void *ptr_a, const void *ptr_b) {
@@ -39,6 +41,12 @@ void ktf_sort(void* data, long i, int tid) {
     pthread_mutex_lock(&d->inputFileLock);
     err_fread_noeof(numbers, sizeof(uint64_t), bufferCount, d->inputFile);
     pthread_mutex_unlock(&d->inputFileLock);
+    // ROTATE usmer
+    if (d->usmer) {
+        for (uint64_t i = 0; i < bufferCount; ++i) {
+            numbers[i] = ror_kmer(numbers[i], d->kmerLength, -1);
+        }
+    }
     // 开始快速排序
     err_func_printf(__func__, "tid:%d, i:%ld, bufferCount:%lu, from %lu to %lu, start.\n", tid, i, bufferCount, startCount, endCount);
     qsort(numbers, bufferCount, sizeof(uint64_t), compare_uint64);
@@ -63,7 +71,7 @@ void ktf_sort(void* data, long i, int tid) {
  * 然后用kthread库中的kt_for创建线程池，对这些块进行排序
  * 最后创建输出文件，写入头部，进而用堆排序将这些块归并，写入数据部分
 */
-int sort_core(const std::string &inputFileName, const std::string &outputFileName, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads, bool distinct) {
+int sort_core(const std::string &inputFileName, const std::string &outputFileName, const std::string &tmpPath, uint32_t maxRamGB, uint32_t nThreads, bool distinct, bool usmer) {
     // 打开待排序文件
     FILE* inputFile = xopen(inputFileName.c_str(), "r");
     uint32_t kmerLength;
@@ -78,6 +86,7 @@ int sort_core(const std::string &inputFileName, const std::string &outputFileNam
     data.tmpFileLock = PTHREAD_MUTEX_INITIALIZER;
     data.kmerLength = kmerLength;
     data.kmerCount = kmerCount;
+    data.usmer = usmer;
     data.singleBufferKmerCount = (uint64_t)maxRamGB * OneGiga / nThreads / sizeof(uint64_t) / 2; // 最后除以2是实验得出的结论，这样大概能把内存控制到范围内
     xassert(data.singleBufferKmerCount > 0, "maxRamGB too small or nThreads too large!");
     data.tmpPath = tmpPath;
@@ -90,8 +99,11 @@ int sort_core(const std::string &inputFileName, const std::string &outputFileNam
     err_func_printf(__func__, "done sorting\n");
     // 多路归并
     err_func_printf(__func__, "merging...\n");
-    merge_core(data.tmpFileNames, outputFileName, false, maxRamGB); 
-    err_func_printf(__func__, "done merging to %s\n", outputFileName.c_str());
+    string fullOutputFileName = outputFileName;
+    if (usmer) fullOutputFileName += ".usmer";
+    else fullOutputFileName += ".smer";
+    merge_core(data.tmpFileNames, fullOutputFileName, false, maxRamGB); 
+    err_func_printf(__func__, "done merging to %s\n", fullOutputFileName.c_str());
     // 删除临时文件
     err_func_printf(__func__, "deleting...\n");
     for (auto tmpFileName : data.tmpFileNames) {

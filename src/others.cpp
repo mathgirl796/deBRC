@@ -95,7 +95,7 @@ int view_core(const std::string &inputFileName) {
         if (i % 5 == 0 && i != 0) {std::cerr << std::endl; }
         if (i % 20 == 0 && i != 0) {getchar();}
         err_fread_noeof(&kmer, sizeof(uint64_t), 1, inputFile);
-        std::cerr << uint64_to_kmer(kmer, kmerLength) << "\t";
+        std::cerr << uint64_to_str(kmer, kmerLength) << "\t";
     }
     std::cerr << std::endl;
     return 0;

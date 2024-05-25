@@ -395,7 +395,7 @@ int err_func_format_printf(const char *func, const char *format, ...)
 
 #include <string>
 using namespace std;
-string uint64_to_kmer(uint64_t kmer, uint32_t k) {
+string uint64_to_str(uint64_t kmer, uint32_t k) {
 	string a;
     char alphabet[4] = {'A','C','G','T'};
 	for (uint32_t j = 0; j < k; ++j) {
@@ -422,6 +422,14 @@ unsigned char nst_nt4_table[256] = {
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
+
+uint64_t str_to_uint64(string kmer, uint32_t k) {
+	uint64_t a = 0;
+	for (uint32_t i = 0; i < k; ++i) {
+		a = (a << 2) | (uint32_t)(nst_nt4_table[(int)kmer[i]]);
+	}
+	return a;
+}
 
 std::string string_format(const char *fmt, ...) {
     va_list args;

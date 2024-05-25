@@ -62,7 +62,7 @@ int convert_main(int argc, char *argv[])
 int merge_main(int argc, char *argv[])
 {
     cmdline::parser a;
-    a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
+    a.add<string>("outputFileName", 'o', "output file path", true);
     a.add("distinct", 'd', "if make result distinct");
     a.footer("inputFileNames");
     a.parse_check(argc, argv);
@@ -99,6 +99,7 @@ int sort_main(int argc, char *argv[])
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
     a.add("distinct", '\0', "delete duplicate kmers");
+    a.add("usmer", '\0', "consider kmer as km2mer-lastBase-firstBase to sort, output *.usmer, used by unipath generation");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -108,7 +109,8 @@ int sort_main(int argc, char *argv[])
     else {
         return sort_core(
             a.rest()[0], a.get<string>("outputFileName"),
-            a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads"), a.exist("distinct")
+            a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads"), 
+            a.exist("distinct"), a.exist("usmer")
         );
     }
 }
@@ -149,7 +151,7 @@ int split_main(int argc, char *argv[])
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
-    a.add("legacy", '\0', "user legacy method (much slower)");
+    a.add("usmer", '\0', "input type is usmer(kp2mer), will output .i.smer(kp1mer) & .o.smer(kp1mer)");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -157,17 +159,10 @@ int split_main(int argc, char *argv[])
         return 1;
     }
     else {
-        if (a.exist("legacy")) {
-            return split_core_legacy(
-                a.rest()[0],
-                a.get<string>("outputFileName"),
-                false
-            );
-        }
         return split_core(
             a.rest()[0],
             a.get<string>("outputFileName"),
-            false,
+            a.exist("usmer"),
             a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
         );
     }

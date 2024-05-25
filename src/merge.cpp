@@ -47,17 +47,18 @@ int merge_core(const std::vector<std::string> &inputFiles, const std::string &ou
         kmerCount += tmpCount;
         // 初始化堆
         uint64_t kmer;
-        err_fread_noeof(&kmer, sizeof(uint64_t), 1, files[i]);
-        minHeap.__insert_start(kmer, i, false);
-        minHeapBuf[i] = kmer;
+        if (tmpCount > 0) {
+            err_fread_noeof(&kmer, sizeof(uint64_t), 1, files[i]);
+            minHeap.__insert_start(kmer, i, false);
+            minHeapBuf[i] = kmer;
+        }
     }
     err_func_printf(__func__, "kmerCount before merge: %lu\n", kmerCount);
 
     minHeap.__init();
 
     // 打开输出文件
-    string fullOutputFileName = outputFileName + ".smer";
-    FILE* outputFile = xopen(fullOutputFileName.c_str(), "wb");
+    FILE* outputFile = xopen(outputFileName.c_str(), "wb");
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
     // 暂时写入头部
     err_fwrite(&kmerLength, sizeof(uint32_t), 1, outputFile);

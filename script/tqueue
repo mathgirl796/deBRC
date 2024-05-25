@@ -6,28 +6,32 @@ from math import copysign
 
 window = curses.initscr()
 start_line = 0
+task_num = 0
+max_y = 0
 
 def display(stdscr):
+    global task_num, max_y
     stdscr.clear()
-    y, x = window.getmaxyx()
+    max_y, _ = window.getmaxyx()
 
     status = subprocess.check_output(['squeue'] + sys.argv[1:]).decode('utf-8')
     outputs = status.split("\n")
+    task_num = len(outputs) - 1
     stdscr.addstr(0, 0, outputs[0])
-    for i in range(1, min(y, len(outputs) - start_line)):
+    for i in range(1, min(max_y, task_num - start_line)):
         stdscr.addstr(i, 0, outputs[start_line + i])
 
     stdscr.refresh()
 
 def main(stdscr):
-    global start_line
+    global start_line, max_y, task_num
 
     # 初始化 curses
     curses.curs_set(0)  # 隐藏光标
     curses.start_color()
     curses.use_default_colors()
     stdscr.nodelay(1)  # 设置非阻塞模式
-    stdscr.timeout(50)
+    stdscr.timeout(100)
 
     # 初始化显示内容
     while True:
@@ -37,13 +41,14 @@ def main(stdscr):
         if key == ord('q'):
             exit(0)
         elif key in [curses.KEY_DOWN, curses.KEY_SF]:
-            start_line += 1
+            start_line += 1 if (task_num - start_line) > (max_y - 1) else 0
         elif key in [curses.KEY_UP, curses.KEY_SR]:
             start_line = max(0, start_line - 1)
         elif key in [curses.KEY_NPAGE]:
-            start_line += window.getmaxyx()[0] - 1
+            start_line += window.getmaxyx()[0] - 1  if (task_num - start_line) > (max_y - 1) else 0
         elif key in [curses.KEY_PPAGE]:
             start_line = max(0, start_line - (window.getmaxyx()[0] - 1))
+        curses.flushinp()
         
 if __name__ == "__main__":
     curses.wrapper(main)

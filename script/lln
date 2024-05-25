@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ $# -ne 1 ];
+then
+    echo "$0 path/to/executable"
+    exit
+fi
+
+LINK_NAME=$(realpath ~)/.local/bin/$(basename $1)
+
+DIR=$(realpath $0)
+if [ "${DIR:0:1}" = "/" ]
+then
+        ln -f -s $1 $LINK_NAME
+else
+        ln -f -s $(pwd)/$1 $LINK_NAME
+fi
+
+chmod +x $LINK_NAME
