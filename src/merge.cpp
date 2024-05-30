@@ -141,17 +141,20 @@ int compare_core(const std::string &refFileName, const std::string &tgtFileName,
     FILE *tmrFile = xopen(tmrFileName.c_str(), "wb");
     setvbuf(rmtFile, NULL, _IOFBF, CommonFileBufSize);
     setvbuf(tmrFile, NULL, _IOFBF, CommonFileBufSize);
-    err_fwrite(&k, sizeof(uint32_t), 1, rmtFile);
-    err_fwrite(&refKmerNum, sizeof(uint64_t), 1, rmtFile);
-    err_fwrite(&k, sizeof(uint32_t), 1, tmrFile);
-    err_fwrite(&tgtKmerNum, sizeof(uint64_t), 1, tmrFile);
-    
 
-    // 两个输入文件先各读入一个kmer
     uint64_t rKmer = 0, tKmer = 0;
     uint64_t rmtKmerNum = 0, tmrKmerNum = 0;
-    size_t rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
-    size_t tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
+    size_t rRet = 0, tRet = 0;
+    err_fwrite(&k, sizeof(uint32_t), 1, rmtFile);
+    err_fwrite(&rmtKmerNum, sizeof(uint64_t), 1, rmtFile);
+    err_fwrite(&k, sizeof(uint32_t), 1, tmrFile);
+    err_fwrite(&tmrKmerNum, sizeof(uint64_t), 1, tmrFile);
+    
+    if (refFileName == tgtFileName) goto COMPARE_END;
+
+    // 两个输入文件先各读入一个kmer
+    rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
+    tRet = fread(&tKmer, sizeof(uint64_t), 1, tgtFile);
 
     while (rRet != 0 && tRet != 0) {
         if (rKmer < tKmer) {
@@ -186,6 +189,7 @@ int compare_core(const std::string &refFileName, const std::string &tgtFileName,
     err_fseek(tmrFile, sizeof(uint32_t), SEEK_SET);
     err_fwrite(&tmrKmerNum, sizeof(uint64_t), 1, tmrFile);
 
+COMPARE_END:
     err_fprintf(stdout, "ref\t%s\n", refFileName.c_str());
     err_fprintf(stdout, "tgt\t%s\n", tgtFileName.c_str());
     err_fprintf(stdout, "k\trefKmerNum\ttgtKmerNum\trmtKmerNum\ttmrKmerNum\n");

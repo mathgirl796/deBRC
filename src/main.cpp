@@ -117,6 +117,7 @@ int sort_main(int argc, char *argv[])
 
 int view_main(int argc, char *argv[]) {
     cmdline::parser a;
+    a.add("head", 'h', "only view kmerLength & kmerNum");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -124,7 +125,7 @@ int view_main(int argc, char *argv[]) {
         return 1;
     }
     else {
-        return view_core(a.rest()[0]);
+        return view_core(a.rest()[0], a.exist("head"));
     }
 }
 
@@ -171,12 +172,14 @@ int split_main(int argc, char *argv[])
 int walk_main(int argc, char *argv[])
 {
     cmdline::parser a;
-    a.add<string>("smerFileName", 's', ".smer file path(kp1)", true);
+    a.add<string>("smerFileName", 's', ".smer file path(kp1)", false, "");
+    a.add<string>("ikFileName", 'i', ".o.mer file path", false, "");
     a.add<string>("okFileName", 'l', ".o.mer file path", true);
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
     a.add("passSpecialCharactors", '\0', "don't store bad brc which has unknown charactors");
     a.add("useKmerFormat", '\0', "output kmer format");
+    a.add("unipath", '\0', "walk unipath, need ikFileName & okFileName, ignore --useKmerFormat");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -191,7 +194,9 @@ int walk_main(int argc, char *argv[])
             a.get<string>("outputFileName"),
             a.get<int>("nThreads"),
             a.exist("passSpecialCharactors"),
-            a.exist("useKmerFormat")
+            a.exist("useKmerFormat"),
+            a.exist("unipath"),
+            a.get<string>("ikFileName")
         );
     }
 }

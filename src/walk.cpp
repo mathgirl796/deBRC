@@ -145,7 +145,7 @@ void ktf_walk(void* data, long i, int tid) {
 
 int walk_core(const std::string &smerFileName, const std::string &okFileName, 
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
-    bool passSpecialCharactors, bool useKmerFormat) {
+    bool passSpecialCharactors, bool useKmerFormat, bool unipath, const std::string &ikFileName) {
 
     uint32_t kp1 = 0;
     uint64_t omerNum = 0;
