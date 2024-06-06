@@ -10,7 +10,7 @@ task_num = 0
 max_y = 0
 
 def display(stdscr):
-    global task_num, max_y
+    global task_num, max_y, start_line
     stdscr.clear()
     max_y, _ = window.getmaxyx()
 
@@ -18,6 +18,8 @@ def display(stdscr):
     outputs = status.split("\n")
     task_num = len(outputs) - 1
     stdscr.addstr(0, 0, outputs[0])
+    if task_num <= start_line:
+        start_line = task_num - max_y + 1
     for i in range(1, min(max_y, task_num - start_line)):
         stdscr.addstr(i, 0, outputs[start_line + i])
 

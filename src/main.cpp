@@ -177,6 +177,7 @@ int walk_main(int argc, char *argv[])
     a.add<string>("okFileName", 'l', ".o.mer file path", true);
     a.add<string>("outputFileName", 'o', "output file path (without extension)", true);
     a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 8);
+    a.add<int>("maxRamGB", 'r', "max amount of RAM in GB (not very smart, at least be okmerFileSize+biggestChr*2+secondBigChr*2+severalRedundantGB)", false, 32, cmdline::range(1, 65535));
     a.add("passSpecialCharactors", '\0', "don't store bad brc which has unknown charactors");
     a.add("useKmerFormat", '\0', "output kmer format");
     a.add("unipath", '\0', "walk unipath, need ikFileName & okFileName, ignore --useKmerFormat");
@@ -196,7 +197,8 @@ int walk_main(int argc, char *argv[])
             a.exist("passSpecialCharactors"),
             a.exist("useKmerFormat"),
             a.exist("unipath"),
-            a.get<string>("ikFileName")
+            a.get<string>("ikFileName"),
+            a.get<int>("maxRamGB")
         );
     }
 }
@@ -249,7 +251,7 @@ int main(int argc, char *argv[])
     struct rusage usage;
     if (getrusage(RUSAGE_SELF, &usage) == 0)
     {
-        err_func_printf(__func__, "Memory usage: %lfGB\n", double(usage.ru_maxrss) / 1024 / 1024);
+        err_func_printf(__func__, "Memory usage: %lfGB\n", double(usage.ru_maxrss) / OneMega);
     }
     else
     {

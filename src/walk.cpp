@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <sys/resource.h>
 #include <unordered_set>
 #include "utils.hpp"
 #include "klib/kthread.hpp"
@@ -46,6 +47,17 @@ void ktf_walk(void* data, long i, int tid) {
     if (kp1 == 32) {kp1merUpdateMask = ~kp1merUpdateMask;}
     // 遍历所有kp1mer
     for (size_t i = 0; i < seq.length() - kp1 + 1; ++i) {
+
+        // seq长度过短，直接视为一条bad brc，结束循环
+        if (seq.length() < kp1) {
+            brc_id = 0;
+            original_seq_length = seq.length();
+            startPosOnSeq = 0;
+            brcType = BrcType::bad;
+            brc = seq;
+            break;
+        }
+
         /* 一条seq头一个kp1mer的处理！（初始化读入kmer） */
         if (i == 0) {
             for (uint32_t j = 0; j < kp1 - 1; ++j) { // 读入头一个kmer的前k-1个base
@@ -138,14 +150,14 @@ void ktf_walk(void* data, long i, int tid) {
     // 输出最后一个brc到文件
     if (brcType == BrcType::good || (brcType == BrcType::bad && walkData->passSpecialCharactors != true)) {
         output += string_format(">%lu|%lu|%lu|%s|%s\n%s\n\n", brc_id, original_seq_length, startPosOnSeq, (brcType == BrcType::good) ? ("good"):("bad"), id.c_str(), brc.c_str());
-        walkData->outputList[i] = output;
     }
+    walkData->outputList[i] = output;
     err_func_printf(__func__, "worker %d finish work\n", tid);
 }
 
 int walk_core(const std::string &smerFileName, const std::string &okFileName, 
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
-    bool passSpecialCharactors, bool useKmerFormat, bool unipath, const std::string &ikFileName) {
+    bool passSpecialCharactors, bool useKmerFormat, bool unipath, const std::string &ikFileName, int maxRamGB) {
 
     uint32_t kp1 = 0;
     uint64_t omerNum = 0;
@@ -160,24 +172,11 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
     if (useKmerFormat) fullOutputFileName += ".kmer"; 
     fullOutputFileName += ".brc";
 
-    // 创建ktf worker所需数据结构
+    // 创建多线程共享数据结构
     struct WalkData walkData;
     walkData.kp1 = kp1;
-    walkData.outputList = vector<string>();
     walkData.passSpecialCharactors = passSpecialCharactors;
     walkData.useKmerFormat = useKmerFormat;
-    gzFile fp = xzopen(faFileName.c_str(), "r");
-    kseq_t *seqs = kseq_init(fp);
-    err_func_printf(__func__, "loading %s\n", faFileName.c_str()); 
-    while (kseq_read(seqs) > 0) {
-        // fprintf(stderr, "%s|%s\n", seqs->name.s, seqs->comment.s);
-        walkData.seqList.push_back(string(seqs->seq.s));
-        string fullSeqName = string(seqs->name.s);
-        if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
-        walkData.idList.push_back(fullSeqName);
-        walkData.outputList.push_back("");
-    }
-    gzclose(fp);
 
     // 加载okmer到内存
     err_func_printf(__func__, "loading %s\n", okFileName.c_str());
@@ -189,20 +188,90 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
     err_fclose(omer);
     err_func_printf(__func__, "done, total %lu omers\n", walkData.okmerSet.size());
 
+    // 创建线程池
+    void *pool = kt_forpool_init(nThreads);
 
-    // 执行walk任务
-    err_func_printf(__func__, "total %lu tasks\n", walkData.idList.size());
-    kt_for(nThreads, ktf_walk, &walkData, walkData.idList.size());
+    // 估算剩余内存
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    double maxRam = (double)(maxRamGB - 1) * OneGiga - (double)usage.ru_maxrss * OneKilo; // 最后减1G是因为人最长染色体0.25G，加上输出brc是0.5G，多给1G应该就不会超标了
+    err_func_printf(__func__, "total ram: %lf GB, used %lf GB, io buffer remaining %lf GB\n", (double)maxRamGB, (double)usage.ru_maxrss / OneMega, maxRam / OneGiga);
 
-    // fasta格式的输出
-    err_func_printf(__func__, "writing results to %s\n", fullOutputFileName.c_str());
+    // 打开输入输出文件
+    gzFile fp = xzopen(faFileName.c_str(), "r");
+    gzbuffer(fp, CommonFileBufSize);
+    kseq_t *seqs = kseq_init(fp);
     FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
-    for (size_t i = 0; i < walkData.outputList.size(); ++i) {
-        err_fprintf(outputFile, walkData.outputList[i].c_str());
+
+    // 分批读入数据处理
+    double tmpRam;
+    long taskNum;
+    while (1) {
+        tmpRam = 0;
+        taskNum = 0;
+        walkData.idList.clear();
+        walkData.seqList.clear();
+        walkData.outputList.clear();
+        while (kseq_read(seqs) > 0) {
+            tmpRam += seqs->seq.l * 2;
+            taskNum += 1;
+            string fullSeqName = string(seqs->name.s);
+            if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
+            walkData.idList.push_back(fullSeqName);
+            walkData.seqList.push_back(string(seqs->seq.s));
+            walkData.outputList.push_back("");
+            if (tmpRam >= maxRam) {
+                break;
+            }
+        }
+
+        if (taskNum == 0) break;
+
+        getrusage(RUSAGE_SELF, &usage);
+        err_func_printf(__func__, "Peak memory usage: %lfGB\n", double(usage.ru_maxrss) / OneMega); 
+        err_func_printf(__func__, "kt_forpool summit %ld tasks\n", taskNum); 
+        kt_forpool(pool, ktf_walk, &walkData, taskNum);
+
+        for (size_t i = 0; i < walkData.outputList.size(); ++i) {
+            err_fprintf(outputFile, walkData.outputList[i].c_str());
+        }
     }
+
+    // 关闭输入输出文件
+    kseq_destroy(seqs);
+    err_gzclose(fp);
     err_fclose(outputFile);
-    err_func_printf(__func__, "done\n");
+
+
+    // walkData.outputList = vector<string>();
+    // gzFile fp = xzopen(faFileName.c_str(), "r");
+    // kseq_t *seqs = kseq_init(fp);
+    // err_func_printf(__func__, "loading %s\n", faFileName.c_str()); 
+    // while (kseq_read(seqs) > 0) {
+    //     // fprintf(stderr, "%s|%s\n", seqs->name.s, seqs->comment.s);
+    //     walkData.seqList.push_back(string(seqs->seq.s));
+    //     string fullSeqName = string(seqs->name.s);
+    //     if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
+    //     walkData.idList.push_back(fullSeqName);
+    //     walkData.outputList.push_back("");
+    // }
+    // gzclose(fp);
+
+
+    // // 执行walk任务
+    // err_func_printf(__func__, "total %lu tasks\n", walkData.idList.size());
+    // kt_for(nThreads, ktf_walk, &walkData, walkData.idList.size());
+
+    // // fasta格式的输出
+    // err_func_printf(__func__, "writing results to %s\n", fullOutputFileName.c_str());
+    // FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
+    // setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
+    // for (size_t i = 0; i < walkData.outputList.size(); ++i) {
+    //     err_fprintf(outputFile, walkData.outputList[i].c_str());
+    // }
+    // err_fclose(outputFile);
+    // err_func_printf(__func__, "done\n");
 
     return 0;
 }

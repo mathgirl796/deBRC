@@ -4,4 +4,4 @@
 
 int walk_core(const std::string &smerFileName, const std::string &okFileName, 
     const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
-    bool passSpecialCharactors, bool useKmerFormat, bool unipath, const std::string &ikFileName);
+    bool passSpecialCharactors, bool useKmerFormat, bool unipath, const std::string &ikFileName, int maxRamGB);

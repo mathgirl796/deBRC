@@ -2,6 +2,9 @@
 #include <string>
 #include <queue>
 #include <parallel/losertree.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "utils.hpp"
 
 using namespace std;
@@ -150,7 +153,14 @@ int compare_core(const std::string &refFileName, const std::string &tgtFileName,
     err_fwrite(&k, sizeof(uint32_t), 1, tmrFile);
     err_fwrite(&tmrKmerNum, sizeof(uint64_t), 1, tmrFile);
     
-    if (refFileName == tgtFileName) goto COMPARE_END;
+    char *file1 = realpath(refFileName.c_str(), NULL);
+    char *file2 = realpath(tgtFileName.c_str(), NULL);
+    if (file1 == NULL) {err_func_printf(__func__, "refFile Not Exist (%s)\n", refFileName.c_str()); return 1;}
+    if (file2 == NULL) {err_func_printf(__func__, "tgtFile Not Exist (%s)\n", tgtFileName.c_str()); return 1;}
+    if (0 == strcmp(file1, file2)) {
+        err_func_printf(__func__, "[%s](%s) and [%s](%s) refence to the same file, immediately give output!\n", refFileName.c_str(), file1, tgtFileName.c_str(), file2);
+        goto COMPARE_END;
+    }
 
     // 两个输入文件先各读入一个kmer
     rRet = fread(&rKmer, sizeof(uint64_t), 1, refFile);
@@ -207,5 +217,7 @@ COMPARE_END:
     err_fclose(rmtFile);
     err_fclose(tmrFile);
 
+    free(file1);
+    free(file2);
     return 0;
 }
