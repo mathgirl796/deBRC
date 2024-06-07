@@ -2,18 +2,22 @@
 
 if [ $# -ne 1 ];
 then
-    echo "$0 path/to/executable"
+    echo "$0 [path/to/executable]"
     exit
 fi
 
+EXE=$1
 LINK_NAME=$(realpath ~)/.local/bin/$(basename $1)
 
-DIR=$(realpath $0)
-if [ "${DIR:0:1}" = "/" ]
+if [ "${EXE:0:1}" = "/" ]
 then
-        ln -f -s $1 $LINK_NAME
+        TARGET=$1
 else
-        ln -f -s $(pwd)/$1 $LINK_NAME
+        TARGET=$(pwd)/$1
 fi
+
+echo LINK_NAME=$LINK_NAME, TARGET=$TARGET
+
+ln -f -s $TARGET $LINK_NAME
 
 chmod +x $LINK_NAME

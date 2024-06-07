@@ -3,6 +3,7 @@
 #include <set>
 #include <sys/resource.h>
 #include <unordered_set>
+#include <algorithm>
 #include "utils.hpp"
 #include "klib/kthread.hpp"
 
@@ -31,6 +32,7 @@ void ktf_walk(void* data, long i, int tid) {
     err_func_printf(__func__, "worker %d start work, processing %s (job %ld)\n", tid, walkData->idList[i].c_str(), i); // 输出的fasta头包含该条brc恢复后应该的长度，以及该brc是所属seq的第几条brc，以及该brc原来所属seq的id
     string id = walkData->idList[i];
     string seq = walkData->seqList[i];
+    transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
     string output = "";
     uint32_t kp1 = walkData->kp1;
     uint32_t k = kp1 - 1;
@@ -180,6 +182,7 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
 
     // 加载okmer到内存
     err_func_printf(__func__, "loading %s\n", okFileName.c_str());
+    walkData.okmerSet.reserve(omerNum);
     for (uint64_t i = 0; i < omerNum; ++i) {
         uint64_t kp1mer;
         err_fread_noeof(&kp1mer, sizeof(uint64_t), 1, omer);

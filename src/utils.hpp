@@ -263,7 +263,7 @@ public:
 #include <string>
 using namespace std;
 string uint64_to_str(uint64_t kmer, uint32_t k);
-uint64_t str_to_uint64(string kmer, uint32_t k);
+uint64_t str_to_uint64(string kmerStr, uint32_t k);
 
 std::string string_format(const char *fmt, ...);
 

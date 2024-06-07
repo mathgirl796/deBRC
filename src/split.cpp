@@ -41,15 +41,16 @@ void ktf_split(void* data, long i, int tid) {
     uint64_t endCount = ((i + 1) * d->singleBufferKmerCount < d->kmerCount) ? ((i + 1) * d->singleBufferKmerCount) : (d->kmerCount);
     uint64_t bufferCount = endCount - startCount;
     uint64_t *kpmers = (uint64_t *)err_calloc(__func__, bufferCount, sizeof(uint64_t));
+    
+    err_func_printf(__func__, "worker:%d, i:%ld, bufferCount:%lu, from %lu to %lu, start.\n", tid, i, bufferCount, startCount, endCount);
 
     // 从文件中读取相应数量的数据到内存中
     err_fread_noeof(kpmers, sizeof(uint64_t), bufferCount, d->inputFile);
-    err_fseek(d->inputFile, -sizeof(uint64_t) * 4, SEEK_CUR); // 给下一个任务提前的四个kp1mer准备好前移过的文件指针
+    err_fseek(d->inputFile, -sizeof(uint64_t) * overlapCount, SEEK_CUR); // 给下一个任务提前的四个kp1mer准备好前移过的文件指针
     d->inputBatchNum ++;
     pthread_mutex_unlock(&d->inputFileLock);
 
     // 把kp1mers中的omer存入临时文件
-    err_func_printf(__func__, "worker:%d, i:%ld, bufferCount:%lu, from %lu to %lu, start.\n", tid, i, bufferCount, startCount, endCount);
     uint32_t kp1;
     uint32_t k;
     FILE *omerFile;

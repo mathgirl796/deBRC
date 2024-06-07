@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstring>
+#include <stdlib.h>
 #include <string>
 #include "utils.hpp"
 using namespace std;
@@ -100,5 +101,69 @@ int view_core(const std::string &inputFileName, bool head) {
         std::cerr << uint64_to_str(kmer, kmerLength) << "\t";
     }
     std::cerr << std::endl;
+    return 0;
+}
+
+static int compare_uint64 (const void *ptr_a, const void *ptr_b) {
+    uint64_t a = *(uint64_t *)ptr_a, b = *(uint64_t *)ptr_b;
+    if (a < b) return -1;
+    else if (a == b) return 0;
+    else return 1;
+} 
+
+int search_core(const std::string &smerFileName, std::string kmerStr) {
+    FILE* smerFile = xopen(smerFileName.c_str(), "rb");
+    uint32_t smerK;
+    uint64_t kmerCount;
+    // 读出头部
+    err_fread_noeof(&smerK, sizeof(uint32_t), 1, smerFile);
+    err_fread_noeof(&kmerCount, sizeof(uint64_t), 1, smerFile);
+
+    // 检测输入数据是否合法（只能是kmer或km1mer或0）
+    uint32_t inputK = (uint32_t)kmerStr.length();
+    bool interactive = false;
+    if (inputK == 0) interactive = true;
+    else if (inputK != smerK && inputK != smerK - 1) {
+        err_fclose(smerFile);
+        err_fprintf(stderr, "inputK must equal smerK or smerKm1!\n");
+        return 1;
+    }
+
+    // 读出smerList数据
+    uint64_t* kmerList = (uint64_t *)err_calloc(__func__, kmerCount, sizeof(uint64_t));
+    err_fread_noeof(kmerList, sizeof(uint64_t), kmerCount, smerFile);
+
+    for(;;) {
+        vector<string> workList;
+        if (interactive) {
+            err_fprintf(stderr, "smerK=%u, input a kmer or km1mer (enter to exit): ", smerK);
+            getline(cin, kmerStr);
+        }
+
+        inputK = kmerStr.length();
+        if (inputK == 0 || kmerStr == "\r") {
+            return 0;
+        }
+        else if (inputK == smerK) {
+            workList.push_back(kmerStr);
+        }
+        else if (inputK == smerK - 1) {
+            workList = {"A"+kmerStr,"C"+kmerStr,"G"+kmerStr,"T"+kmerStr,kmerStr+"A",kmerStr+"C",kmerStr+"G",kmerStr+"T"};
+        }
+        else {
+            err_fprintf(stderr, "wrong inputK, inputK must equal smerK or smerKm1!\n");
+            if (interactive) continue;
+            else break;
+        }
+        for (auto tmpKmerStr: workList) {
+            inputK = tmpKmerStr.length();
+            uint64_t kmer = str_to_uint64(tmpKmerStr, inputK);
+            void* retPtr = bsearch(&kmer, kmerList, kmerCount, sizeof(uint64_t), compare_uint64);
+            err_printf("%s\t%s\n", uint64_to_str(kmer, inputK).c_str(), retPtr ? string_format("%lu", ((uint64_t)retPtr - (uint64_t)kmerList) / sizeof(uint64_t)).c_str() : "not exist");
+        }
+    }
+
+    free(kmerList);
+    err_fclose(smerFile);
     return 0;
 }

@@ -423,10 +423,10 @@ unsigned char nst_nt4_table[256] = {
 	4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
 
-uint64_t str_to_uint64(string kmer, uint32_t k) {
+uint64_t str_to_uint64(string kmerStr, uint32_t k) {
 	uint64_t a = 0;
 	for (uint32_t i = 0; i < k; ++i) {
-		a = (a << 2) | (uint32_t)(nst_nt4_table[(int)kmer[i]]);
+		a = (a << 2) | (uint32_t)(nst_nt4_table[(int)kmerStr[i]]);
 	}
 	return a;
 }

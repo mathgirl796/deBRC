@@ -227,6 +227,18 @@ int restore_main(int argc, char *argv[])
     }
 }
 
+int search_main(int argc, char *argv[])
+{
+    cmdline::parser a;
+    a.add<string>("smerFileName", 's', ".smer file path", true);
+    a.add<string>("kmer", 'm', "kmer", false, "");
+    a.parse_check(argc, argv);
+    return search_core(
+        a.get<string>("smerFileName"),
+        a.get<string>("kmer")
+    );
+}
+
 int main(int argc, char *argv[])
 {
     err_func_printf(__func__, "program start, argv:\n");
@@ -246,6 +258,7 @@ int main(int argc, char *argv[])
     h.add_function("split", "analysis kp1.smer to generate o.smer", split_main);
     h.add_function("walk", "generate brc using fasta & o.smer & .smer(optional)", walk_main);
     h.add_function("restore", "restore fasta using k.mer & brc", restore_main);
+    h.add_function("search", "search a kmer in an smer file", search_main);
     int ret = h.run(argc, argv);
 
     struct rusage usage;
