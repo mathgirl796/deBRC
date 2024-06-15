@@ -83,7 +83,7 @@ int check_core(const std::string &inputFileName, uint32_t nThreads, bool check_d
 
 
 
-int view_core(const std::string &inputFileName, bool head) {
+int view_core(const std::string &inputFileName, bool head, bool tail) {
     FILE* inputFile = xopen(inputFileName.c_str(), "r");
     setvbuf(inputFile, NULL, _IOFBF, CommonFileBufSize);
     uint32_t kmerLength;
@@ -97,6 +97,7 @@ int view_core(const std::string &inputFileName, bool head) {
     for (uint64_t i = 0; i < kmerCount; ++i) {
         if (i % 5 == 0 && i != 0) {std::cerr << std::endl; }
         if (i % 20 == 0 && i != 0) {getchar();}
+        if (tail) err_fseek(inputFile, -sizeof(uint64_t)*(i+1), SEEK_END);
         err_fread_noeof(&kmer, sizeof(uint64_t), 1, inputFile);
         std::cerr << uint64_to_str(kmer, kmerLength) << "\t";
     }

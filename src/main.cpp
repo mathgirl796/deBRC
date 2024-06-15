@@ -118,6 +118,7 @@ int sort_main(int argc, char *argv[])
 int view_main(int argc, char *argv[]) {
     cmdline::parser a;
     a.add("head", 'h', "only view kmerLength & kmerNum");
+    a.add("tail", 't', "view from tail");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -125,7 +126,7 @@ int view_main(int argc, char *argv[]) {
         return 1;
     }
     else {
-        return view_core(a.rest()[0], a.exist("head"));
+        return view_core(a.rest()[0], a.exist("head"), a.exist("tail"));
     }
 }
 

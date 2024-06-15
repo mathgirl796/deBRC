@@ -1,3 +1,5 @@
+# 说明：首先用 minimap2 -ax asm5 把样本基因组比对到chm13上得到sam文件，再用该脚本从该sam文件还原出全部比对到正链上的样本基因组
+
 import pysam
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
