@@ -39,7 +39,7 @@ err_print('start draw figure')
 if countBaseVar:
     plt.bar(x, y)
 else:
-    sample_num = np.min((cumulative_delta, 10000))
+    sample_num = int(np.min((cumulative_delta, 10000)))
     sample_index = np.random.choice(np.arange(len(x)), sample_num, p=y/np.sum(y))
     err_print(f"sample {len(sample_index)} data")
     title += f"sample_num={sample_num}"
