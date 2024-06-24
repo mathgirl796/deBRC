@@ -21,8 +21,8 @@ mkdir -p $TMP_DIR
 
 /home/user/duanran/repo/deBRC/deBRC/bin/main kmc    -t $MINCPUS -r $MEM -o $OUTPUT_DIR/$BASE_OUTPUT_NAME -k $(expr $K + 1 $(if [ "$USMER" == "1" ];then echo "+ 1";fi)) -w $TMP_DIR $BASE_DIR/$BASE_INPUT_NAME
 /home/user/duanran/repo/deBRC/deBRC/bin/main convert                    -o $OUTPUT_DIR/$BASE_OUTPUT_NAME $OUTPUT_DIR/$BASE_OUTPUT_NAME
-/home/user/duanran/repo/deBRC/deBRC/bin/main sort   -t $MINCPUS -r $MEM --usmer -o $OUTPUT_DIR/$BASE_OUTPUT_NAME -w $TMP_DIR $OUTPUT_DIR/$BASE_OUTPUT_NAME.mer
-/home/user/duanran/repo/deBRC/deBRC/bin/main split  -t $MINCPUS -r $MEM --usmer -o $OUTPUT_DIR/$BASE_OUTPUT_NAME -w $TMP_DIR $OUTPUT_DIR/$BASE_OUTPUT_NAME.$(if [ "$USMER" == "1" ];then echo u;fi)smer
+/home/user/duanran/repo/deBRC/deBRC/bin/main sort   -t $MINCPUS -r $MEM $(if [ "$USMER" == "1" ];then echo "--usmer";fi) -o $OUTPUT_DIR/$BASE_OUTPUT_NAME -w $TMP_DIR $OUTPUT_DIR/$BASE_OUTPUT_NAME.mer
+/home/user/duanran/repo/deBRC/deBRC/bin/main split  -t $MINCPUS -r $MEM $(if [ "$USMER" == "1" ];then echo "--usmer";fi) -o $OUTPUT_DIR/$BASE_OUTPUT_NAME -w $TMP_DIR $OUTPUT_DIR/$BASE_OUTPUT_NAME.$(if [ "$USMER" == "1" ];then echo u;fi)smer
 if [ "$USMER" == "1" ];then /home/user/duanran/repo/deBRC/deBRC/bin/main merge  --distinct -o $OUTPUT_DIR/$BASE_OUTPUT_NAME.io.smer $OUTPUT_DIR/$BASE_OUTPUT_NAME.i.smer  $OUTPUT_DIR/$BASE_OUTPUT_NAME.o.smer;fi
 /home/user/duanran/repo/deBRC/deBRC/bin/main walk   -t $MINCPUS -r $MEM $(if [ "$USEKMERFORMAT" == "1" ];then echo --useKmerFormat;fi) -s asdf -l $OUTPUT_DIR/$BASE_OUTPUT_NAME.$(if [ "$USMER" == "1" ];then echo i;fi)o.smer -o $OUTPUT_DIR/$BASE_OUTPUT_NAME $BASE_DIR/$BASE_INPUT_NAME
 if [ "$USMER" != "1" ];then /home/user/duanran/repo/deBRC/deBRC/bin/main restore -t $MINCPUS $(if [ "$USEKMERFORMAT" == "1" ];then echo --useKmerFormat;fi) -s $OUTPUT_DIR/$BASE_OUTPUT_NAME.smer -o $OUTPUT_DIR/$BASE_OUTPUT_NAME $OUTPUT_DIR/$BASE_OUTPUT_NAME$(if [ "$USEKMERFORMAT" == "1" ];then echo ".kmer";fi).brc;fi

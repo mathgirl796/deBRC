@@ -5,6 +5,40 @@ import cv2
 import argparse
 from tqdm import tqdm
 
+
+def pbwt_encode_core(bmp):
+    # encode pbwt
+    pbwt = np.zeros_like(bmp)
+    pbwt[:,0] = bmp[:,0]
+    order = np.arange(bmp.shape[0])
+    for j in tqdm(list(range(1, bmp.shape[1])), desc='pbwt_encode'):
+        index = np.argsort(bmp[:,j-1][order], kind='stable') # retrive and sort new column
+        order = order[index]
+        pbwt[:,j] = bmp[:,j][order] # save result
+    return pbwt
+
+def pbwt_decode_core(pbwt):
+    # decode pbwt
+    rbmp = np.zeros_like(pbwt)
+    rbmp[:,0] = pbwt[:,0]
+    order = np.arange(pbwt.shape[0])
+    for j in tqdm(list(range(1, pbwt.shape[1])), desc='pbwt_decode'):
+        index = np.argsort(rbmp[:,j-1][order], kind='stable')
+        order = order[index]
+        rbmp[:,j][order] = pbwt[:,j]
+    return rbmp
+
+def txt_to_img_core(lines):
+    quals = [x.strip() for x in lines]
+    qual_lens = [len(x) for x in quals]
+    qual_distribution = Counter(qual_lens)
+    assert(len(qual_distribution) == 1)
+    bmp = np.zeros((len(quals), np.max(list(qual_distribution.keys()))), dtype=np.uint8)
+    for i, qual in enumerate(tqdm(quals, desc='trans')):
+        b = np.frombuffer(qual.encode('ascii'), dtype=np.uint8)
+        bmp[i] = b
+    return bmp
+
 def trans(args):
     filepath, outputpath = args.input, args.output
     start, end = args.start, args.end
@@ -33,17 +67,6 @@ def trans(args):
         outputpath = filepath + '.bmp'
     cv2.imwrite(outputpath, bmp)
 
-def pbwt_encode_core(bmp):
-    # encode pbwt
-    pbwt = np.zeros_like(bmp)
-    pbwt[:,0] = bmp[:,0]
-    order = np.arange(bmp.shape[0])
-    for j in tqdm(list(range(1, bmp.shape[1])), desc='encode'):
-        index = np.argsort(bmp[:,j-1][order], kind='stable') # retrive and sort new column
-        order = order[index]
-        pbwt[:,j] = bmp[:,j][order] # save result
-    return pbwt
-
 def pbwt_encode(args):
     filepath, outputpath, transpose = args.input, args.output, args.transpose
     bmp = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
@@ -54,17 +77,6 @@ def pbwt_encode(args):
         else:
             outputpath = filepath + '.pbwt.webp'
     cv2.imwrite(outputpath, pbwt.T if transpose else pbwt)
-
-def pbwt_decode_core(pbwt):
-    # decode pbwt
-    rbmp = np.zeros_like(pbwt)
-    rbmp[:,0] = pbwt[:,0]
-    order = np.arange(pbwt.shape[0])
-    for j in tqdm(list(range(1, pbwt.shape[1])), desc='decode'):
-        index = np.argsort(rbmp[:,j-1][order], kind='stable')
-        order = order[index]
-        rbmp[:,j][order] = pbwt[:,j]
-    return rbmp
 
 def pbwt_decode(args):
     filepath, outputpath, transpose = args.input, args.output, args.transpose
