@@ -100,7 +100,6 @@ int sort_main(int argc, char *argv[])
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
     a.add("distinct", '\0', "delete duplicate kmers");
-    a.add("usmer", '\0', "consider kmer as km2mer-lastBase-firstBase to sort, output *.usmer, used by unipath generation");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -111,7 +110,7 @@ int sort_main(int argc, char *argv[])
         return sort_core(
             a.rest()[0], a.get<string>("outputFileName"),
             a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads"), 
-            a.exist("distinct"), a.exist("usmer")
+            a.exist("distinct")
         );
     }
 }
@@ -154,7 +153,7 @@ int split_main(int argc, char *argv[])
     a.add<int>("maxRamGB", 'r', "max amount of RAM in GB", false, 8, cmdline::range(1, 65535));
     a.add<int>("nThreads", 't', "total number of threads", false, 4, cmdline::range(1, 65535));
     a.add<string>("tmpPath", 'w', "place to hold temp files", false, "./");
-    a.add("usmer", '\0', "input type is usmer(kp2mer), will output .i.smer(kp1mer) & .o.smer(kp1mer)");
+    a.add("ismer", '\0', "also output .i.smer");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
     if (a.rest().size() != 1) {
@@ -165,7 +164,7 @@ int split_main(int argc, char *argv[])
         return split_core(
             a.rest()[0],
             a.get<string>("outputFileName"),
-            a.exist("usmer"),
+            a.exist("ismer"),
             a.get<string>("tmpPath"), a.get<int>("maxRamGB"), a.get<int>("nThreads")
         );
     }
