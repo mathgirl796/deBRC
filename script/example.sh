@@ -7,7 +7,7 @@
 
 K=4
 USEKMERFORMAT=0
-ISMER=0
+ISMER=1
 BASE_DIR=/home/user/duanran/repo/deBRC/deBRC/data/test
 BASE_OUTPUT_NAME=test
 BASE_INPUT_NAME=test.fa

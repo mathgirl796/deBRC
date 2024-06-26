@@ -197,19 +197,8 @@ int unitig_core(const std::string &ikFileName, const std::string &okFileName,
         }
 
     }
-    while (kseq_read(seqs) > 0) {
-        string fullSeqName = string(seqs->name.s);
-        if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
 
-        vector<string> ret_string;
-        vector<uint64_t> ret_start_pos;
-        unitig_one_seq(string(seqs->seq.s), kp1 - 1, imap, omap, ret_string, ret_start_pos);
-        for (size_t i = 0; i < ret_string.size(); ++i) {
-            err_fprintf(outputFile, ">%lu|%lu|%s\n%s\n\n", i, ret_start_pos[i], fullSeqName.c_str(), ret_string[i].c_str());
-        }
-        ret_string.clear();
-        ret_start_pos.clear();
-    }
+    err_func_printf(__func__, "done\n"); 
 
     kseq_destroy(seqs);
     err_gzclose(inputFile);
