@@ -1,18 +1,18 @@
 #!/bin/bash
 #SBATCH -J hg38
-#SBATCH -o /home/user/duanran/repo/deBRC/deBRC/experiment/single_genomes/hg38/log/%j.out
+#SBATCH -o /home/user/duanran/repo/deBRC/deBRC/experiment/single_genomes/hg38/log/%j.log
 #SBATCH -p fat
 #SBATCH --mincpus 24
 #SBATCH --mem 64G
 
-K=4
-USEKMERFORMAT=0
-ISMER=1
-BASE_DIR=/home/user/duanran/repo/deBRC/deBRC/data/test
-BASE_OUTPUT_NAME=test
-BASE_INPUT_NAME=test.fa
-MINCPUS=3
-MEM=4
+K=21
+USEKMERFORMAT=1
+ISMER=0
+BASE_DIR=/home/user/duanran/repo/deBRC/deBRC/experiment/single_genomes/hg38
+BASE_OUTPUT_NAME=hg38
+BASE_INPUT_NAME=hg38.fa
+MINCPUS=24
+MEM=64
 
 OUTPUT_DIR=$BASE_DIR/k$K
 TMP_DIR=$BASE_DIR/k$K/tmp

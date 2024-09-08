@@ -15,6 +15,7 @@
 #include "walk.hpp"
 #include "restore.hpp"
 #include "unitig.hpp"
+#include "okmerflag.hpp"
 
 using namespace std;
 
@@ -182,7 +183,7 @@ int walk_main(int argc, char *argv[])
     a.add("useKmerFormat", '\0', "output kmer format");
     a.footer("inputFileName");
     a.parse_check(argc, argv);
-    if (a.rest().size() != 1) {
+    if (a.rest().size() < 1) {
         cerr << a.usage();
         return 1;
     }
@@ -190,7 +191,7 @@ int walk_main(int argc, char *argv[])
         return walk_core(
             a.get<string>("smerFileName"),
             a.get<string>("okFileName"),
-            a.rest()[0],
+            a.rest(),
             a.get<string>("outputFileName"),
             a.get<int>("nThreads"),
             a.exist("passSpecialCharactors"),
@@ -256,6 +257,22 @@ int unitig_main(int argc, char *argv[])
         );
 }
 
+int okmerflag_main(int argc, char *argv[]) {
+    cmdline::parser a;
+    a.add<string>("outputFileName", 'o', "output file path (without extention)", true);
+    a.add<string>("okFileName", 'k', "multi-out kp1mer set", true);
+    a.add<int>("nThreads", 't', "number of workers dealing with seqs", false, 4);
+    a.parse_check(argc, argv);
+    if (a.rest().size() != 1) {
+        cerr << a.usage();
+        return 1;
+    }
+    return okmerflag_core(
+        a.rest()[0], a.get<string>("okFileName"), a.get<string>("outputFileName"), 
+        a.get<int>("nThreads")
+    );
+}
+
 int main(int argc, char *argv[])
 {
     err_func_printf(__func__, "program start, argv:\n");
@@ -276,6 +293,7 @@ int main(int argc, char *argv[])
     h.add_function("restore", "restore fasta using k.mer & brc", restore_main);
     h.add_function("search", "search a kmer in an smer file", search_main);
     h.add_function("unitig", "represent fasta in consecutive unitigs format", unitig_main);
+    h.add_function("okmerflag", "flag a fasta file indicate which pos is brc", okmerflag_main);
     int ret = h.run(argc, argv);
 
     struct rusage usage;
@@ -287,7 +305,5 @@ int main(int argc, char *argv[])
     {
         err_func_printf(__func__, "Failed to get memory usage\n");
     }
-    return 0;
-
-    return ret;
+    exit(ret);
 }

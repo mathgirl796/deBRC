@@ -47,18 +47,19 @@ void ktf_walk(void* shared, long i, int tid) {
     unsigned char newBase;
     uint64_t kp1merUpdateMask = (~(((uint64_t)-1) << (kp1 << 1)));
     if (kp1 == 32) {kp1merUpdateMask = ~kp1merUpdateMask;}
+
+    // seq长度过短，直接视为一条bad brc，结束循环
+    if (seq.length() < kp1) {
+        brc_id = 0;
+        original_seq_length = seq.length();
+        startPosOnSeq = 0;
+        brcType = BrcType::bad;
+        brc = seq;
+        goto END_OF_SINGLE_WALK;
+    }
+
     // 遍历所有kp1mer
     for (size_t i = 0; i < seq.length() - kp1 + 1; ++i) {
-
-        // seq长度过短，直接视为一条bad brc，结束循环
-        if (seq.length() < kp1) {
-            brc_id = 0;
-            original_seq_length = seq.length();
-            startPosOnSeq = 0;
-            brcType = BrcType::bad;
-            brc = seq;
-            break;
-        }
 
         /* 一条seq头一个kp1mer的处理！（初始化读入kmer） */
         if (i == 0) {
@@ -149,6 +150,8 @@ void ktf_walk(void* shared, long i, int tid) {
             original_seq_length ++;
         }
     }
+
+END_OF_SINGLE_WALK:
     // 输出最后一个brc到文件
     if (brcType == BrcType::good || (brcType == BrcType::bad && data->passSpecialCharactors != true)) {
         output += string_format(">%lu|%lu|%lu|%s|%s\n%s\n\n", brc_id, original_seq_length, startPosOnSeq, (brcType == BrcType::good) ? ("good"):("bad"), id.c_str(), brc.c_str());
@@ -158,7 +161,7 @@ void ktf_walk(void* shared, long i, int tid) {
 }
 
 int walk_core(const std::string &smerFileName, const std::string &okFileName, 
-    const std::string &faFileName, const std::string &outputFileName, uint32_t nThreads,
+    const std::vector<std::string> &faFiles, const std::string &outputFileName, uint32_t nThreads,
     bool passSpecialCharactors, bool useKmerFormat, int maxRamGB) {
 
     uint32_t kp1 = 0;
@@ -200,50 +203,56 @@ int walk_core(const std::string &smerFileName, const std::string &okFileName,
     double maxRam = (double)(maxRamGB - 1) * OneGiga - (double)usage.ru_maxrss * OneKilo; // 最后减1G是因为人最长染色体0.25G，加上输出brc是0.5G，多给1G应该就不会超标了
     err_func_printf(__func__, "total ram: %lf GB, used %lf GB, io buffer remaining %lf GB\n", (double)maxRamGB, (double)usage.ru_maxrss / OneMega, maxRam / OneGiga);
 
-    // 打开输入输出文件
-    gzFile fp = xzopen(faFileName.c_str(), "r");
-    gzbuffer(fp, CommonFileBufSize);
-    kseq_t *seqs = kseq_init(fp);
+    // 打开输出文件
     FILE *outputFile = xopen(fullOutputFileName.c_str(), "wb");
     setvbuf(outputFile, NULL, _IOFBF, CommonFileBufSize);
 
-    // 分批读入数据处理
-    double tmpRam;
-    long taskNum;
-    while (1) {
-        tmpRam = 0;
-        taskNum = 0;
-        data.idList.clear();
-        data.seqList.clear();
-        data.outputList.clear();
-        while (kseq_read(seqs) > 0) {
-            tmpRam += seqs->seq.l * 2;
-            taskNum += 1;
-            string fullSeqName = string(seqs->name.s);
-            if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
-            data.idList.push_back(fullSeqName);
-            data.seqList.push_back(string(seqs->seq.s));
-            data.outputList.push_back("");
-            if (tmpRam >= maxRam) {
-                break;
+    // 处理每条输入文件
+    for (auto faFileName : faFiles) {
+        gzFile fp = xzopen(faFileName.c_str(), "r");
+        gzbuffer(fp, CommonFileBufSize);
+        kseq_t *seqs = kseq_init(fp);
+
+        // 分批读入数据处理
+        double tmpRam;
+        long taskNum;
+        while (1) {
+            tmpRam = 0;
+            taskNum = 0;
+            data.idList.clear();
+            data.seqList.clear();
+            data.outputList.clear();
+            while (kseq_read(seqs) > 0) {
+                tmpRam += seqs->seq.l * 2;
+                taskNum += 1;
+                string fullSeqName = string(seqs->name.s);
+                if (seqs->comment.l > 0) fullSeqName += " " + string(seqs->comment.s);
+                data.idList.push_back(fullSeqName);
+                data.seqList.push_back(string(seqs->seq.s));
+                data.outputList.push_back("");
+                if (tmpRam >= maxRam) {
+                    break;
+                }
+            }
+
+            if (taskNum == 0) break;
+
+            getrusage(RUSAGE_SELF, &usage);
+            err_func_printf(__func__, "Peak memory usage: %lfGB\n", double(usage.ru_maxrss) / OneMega); 
+            err_func_printf(__func__, "kt_forpool summit %ld tasks\n", taskNum); 
+            kt_forpool(pool, ktf_walk, &data, taskNum);
+
+            for (size_t i = 0; i < data.outputList.size(); ++i) {
+                err_fprintf(outputFile, data.outputList[i].c_str());
             }
         }
 
-        if (taskNum == 0) break;
-
-        getrusage(RUSAGE_SELF, &usage);
-        err_func_printf(__func__, "Peak memory usage: %lfGB\n", double(usage.ru_maxrss) / OneMega); 
-        err_func_printf(__func__, "kt_forpool summit %ld tasks\n", taskNum); 
-        kt_forpool(pool, ktf_walk, &data, taskNum);
-
-        for (size_t i = 0; i < data.outputList.size(); ++i) {
-            err_fprintf(outputFile, data.outputList[i].c_str());
-        }
+        // 关闭输入文件
+        kseq_destroy(seqs);
+        err_gzclose(fp);
     }
 
-    // 关闭输入输出文件
-    kseq_destroy(seqs);
-    err_gzclose(fp);
+    // 关闭输出文件
     err_fclose(outputFile);
 
     return 0;
