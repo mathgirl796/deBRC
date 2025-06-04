@@ -255,6 +255,7 @@ int split_core(const std::string &inputFileName, const std::string &outputFileNa
         err_fwrite(&imerCount, sizeof(uint64_t), 1, outputFile); // 写入kmer数量
         // 关闭输出文件
         err_fclose(outputFile);
+        // TODO 给outputFile排序，否则不能称为smer
     }
 
     return 0;

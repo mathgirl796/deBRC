@@ -162,6 +162,7 @@ int search_core(const std::string &smerFileName, std::string kmerStr) {
             void* retPtr = bsearch(&kmer, kmerList, kmerCount, sizeof(uint64_t), compare_uint64);
             err_printf("%s\t%s\n", uint64_to_str(kmer, inputK).c_str(), retPtr ? string_format("%lu", ((uint64_t)retPtr - (uint64_t)kmerList) / sizeof(uint64_t)).c_str() : "not exist");
         }
+        if (!interactive) break;
     }
 
     free(kmerList);
